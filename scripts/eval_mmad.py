@@ -2,10 +2,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from mmad_inspector.service.settings import load_yaml, load_runtime_config
-from mmad_inspector.anomaly.dummy_edge import DummyEdgeAnomaly
-from mmad_inspector.mllm.echo import EchoMLLM
-from mmad_inspector.eval.mmad_eval import evaluate_mmad
+from src.service.settings import load_yaml, load_runtime_config
+from src.anomaly.dummy_edge import DummyEdgeAnomaly
+from src.mllm.echo import EchoMLLM
+from src.eval.mmad_eval import evaluate_mmad
 
 def main():
     ap = argparse.ArgumentParser()

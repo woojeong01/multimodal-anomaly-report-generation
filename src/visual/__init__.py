@@ -1,4 +1,4 @@
-from .plot import set_korean_font, count_plot, bar_plot, line_plot, box_plot
+from .plot import set_korean_font, count_plot, bar_plot, line_plot, box_plot, hist_plot, kde_plot, heatmap_plot
 
 __all__ = [
     "set_korean_font",
@@ -6,4 +6,7 @@ __all__ = [
     "bar_plot",
     "line_plot",
     "box_plot",
+    "hist_plot",
+    "kde_plot",
+    "heatmap_plot",
 ]
