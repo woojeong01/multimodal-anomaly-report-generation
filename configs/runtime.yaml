@@ -1,106 +1,67 @@
 paths:
-  # You can override these via .env (see .env.example)
   data_root: ${MMAD_DATA_ROOT:-/Volumes/T7/Dataset/MMAD}
   mmad_json: ${MMAD_JSON_PATH:-/Volumes/T7/Dataset/MMAD/mmad.json}
   artifact_root: ${ARTIFACT_ROOT:-./outputs}
   db_path: ${DB_PATH:-./outputs/results.sqlite3}
 
+# Anomaly Detection Model
 anomaly:
-  model: dummy  # dummy | patchcore | anomalyclip (later)
+  model: patchcore  # dummy | patchcore
   dummy:
     blur_ksize: 5
     edge_low: 50
     edge_high: 150
+  patchcore:
+    backbone: wide_resnet50_2
+    layers: [layer2, layer3]
+    image_size: [1024, 1024]
+    checkpoint_path: null
 
+# Data
+data:
+  normal_dir: null
+  test_dir: null
+  image_extensions: [".jpg", ".jpeg", ".png"]
+
+# Training
+training:
+  output_dir: checkpoints
+  train_batch_size: 32
+  eval_batch_size: 32
+  epochs: 100
+  lr: 0.001
+  weight_decay: 0.0001
+  dropout: 0.2
+  num_workers: 4
+  early_stop: 10
+  scheduler:
+    enabled: true
+    type: cosine  # cosine | step
+    min_lr: 0.00001
+    step_size: 10
+    gamma: 0.1
+
+# Checkpoint
+checkpoint:
+  save_best: true
+  save_last: true
+  monitor: val_loss
+  mode: min
+
+# MLLM (Report Generation)
 mllm:
-  client: echo  # echo | qwen_local | api_openai (later)
+  client: echo  # echo | qwen_local | api_openai
   echo:
     language: ko
     seed: 0
 
+# Report
 report:
   schema_path: configs/report_schema.json
 
-# ---
-
-# ex
-# # Data
-# data:
-#   root: "dataset/Multi_Camera_Semantic_Segmentation"
-#   additional_roots:
-#     - "dataset/Mono_Camera_Semantic_Segmentation"
-#   class_info: "dataset/total_class_info.csv"
-#   img_size: [768, 576]
-#   group_config: "configs/group_config.yaml"
-#   augmentation_enabled: true
-#   augmentation_config: "configs/augmentation.yaml"
-
-# # Model
-# # name: DeepLabV3Plus, UnetPlusPlus, MAnet, PAN, PSPNet
-# # encoder: resnet50, resnet101, efficientnet-b0/b4/b7, mit_b0~b5
-# model:
-#   name: "UnetPlusPlus"
-#   encoder: "efficientnet-b4"
-#   pretrained: true
-
-# # Training
-# training:
-#   train_batch_size: 24
-#   eval_batch_size: 6 # 32
-#   accumulation_steps: 3
-#   epochs: 100
-#   lr: 0.0006
-#   weight_decay: 0.0002
-#   dropout: 0.2
-#   early_stop: 7
-#   num_workers: 8
-#   scheduler:
-#     enabled: true
-#     type: "cosine"  # cosine, step
-#     min_lr: 0.000005
-
-# # Checkpoint
-# checkpoint:
-#   dir: "checkpoints"
-#   exp_name: "Merge_Data"
-
-# # Loss
-# # type: ce, dice, focal, ce+dice, focal+dice
-# loss:
-#   type: "focal+dice"
-#   weights:
-#     focal: 0.5
-#     dice: 0.5
-#   ignore_index: 255
-#   focal_gamma: 2.0
-#   class_weights:
-#     enabled: true
-#     method: "inverse"  # inverse, effective, sqrt_inverse
-#     beta: 0.999
-#     normalize: true
-#     manual_boost:
-#       enabled: true
-#       multipliers:
-#         0: 0.2    # 무시/자차
-#         1: 0.5    # 도로
-#         3: 6.0    # 중앙선
-#         4: 5.0    # 점선
-#         5: 5.0    # 실선
-#         6: 8.0    # 정지선/횡단보도
-#         8: 15.0   # 유도선
-#         9: 3.0    # 신호등/표지판
-#         10: 2.0   # 전봇대
-#         11: 4.0   # 가드레일
-#         12: 7.0   # 보도경계
-#         13: 1.5   # 보도
-#         14: 3.0   # 차량
-#         15: 7.0   # 보행자
-#         16: 0.2   # 하늘
-
-# # W&B
-# wandb:
-#   enabled: true
-#   project: "Road_Lane_Segmentation"
-#   run_name: "Merge_Data"
-#   tags: ["UnetPlusPlus", "segmentation", "focal+dice", "efficientnet-b4", "multi+mono"]
-#   num_samples: 2
+# W&B
+wandb:
+  enabled: false
+  project: MMAD_Inspector
+  run_name: null
+  tags: []

@@ -3,7 +3,8 @@ from pathlib import Path
 import torch
 from .log import setup_logger
 
-logger = setup_logger(name="Checkpoint", log_prefix="checkpoint")
+# log_prefix=None으로 파일 로깅 비활성화 (콘솔만 출력)
+logger = setup_logger(name="Checkpoint", log_prefix=None)
 
 def save_checkpoint(model: torch.nn.Module, path: str) -> str:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
