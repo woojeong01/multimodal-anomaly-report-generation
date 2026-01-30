@@ -7,6 +7,7 @@ logs/
 wandb/
 dataset/
 results/
+output/
 
 # ===== Python =====
 __pycache__/
