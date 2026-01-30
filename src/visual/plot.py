@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 import platform
+from pathlib import Path
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as font_manager
 from matplotlib import rc
 import seaborn as sns
+from PIL import Image
 
 
 def set_korean_font(verbose: bool = False) -> bool:
@@ -237,3 +242,201 @@ def heatmap_plot(data, ax=None, figsize=(12, 8), cmap='Blues', annot=True, fmt='
         plt.tight_layout()
         plt.show()
     return ax
+
+
+def anomaly_image_plot(
+    image_path: str | Path,
+    figsize: tuple = (16, 4),
+    title: str | None = None,
+    show: bool = True,
+) -> plt.Figure:
+    """
+    Anomalib이 저장한 단일 결과 이미지 시각화
+
+    Args:
+        image_path: Anomalib 결과 이미지 경로
+        figsize: figure 크기
+        title: 제목 (None이면 파일명 사용)
+        show: True면 plt.show() 호출
+
+    Returns:
+        matplotlib Figure 객체
+
+    Example:
+        >>> from src.visual.plot import anomaly_image_plot
+        >>> anomaly_image_plot("results/Patchcore/MVTecAD/bottle/v0/images/broken_small/000.png")
+    """
+    image_path = Path(image_path)
+    img = Image.open(image_path)
+
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.imshow(img)
+    ax.axis("off")
+    ax.set_title(title if title else f"{image_path.parent.name}/{image_path.name}")
+
+    plt.tight_layout()
+    if show:
+        plt.show()
+    return fig
+
+
+def anomaly_grid_from_dir(
+    result_dir: str | Path,
+    n_cols: int = 2,
+    n_samples: int | None = None,
+    figsize_per_image: tuple = (8, 2),
+    categories: list | None = None,
+    title: str | None = None,
+    show: bool = True,
+) -> plt.Figure:
+    """
+    Anomalib 결과 폴더에서 이미지를 로드하여 그리드로 시각화
+
+    Args:
+        result_dir: Anomalib 결과 이미지 폴더 경로 (예: results/Patchcore/MVTecAD/bottle/v0/images)
+        n_cols: 열 개수
+        n_samples: 표시할 샘플 수 (None이면 전체)
+        figsize_per_image: 이미지당 크기
+        categories: 표시할 카테고리 리스트 (None이면 전체, 예: ['good', 'broken_small'])
+        title: 전체 제목
+        show: True면 plt.show() 호출
+
+    Returns:
+        matplotlib Figure 객체
+
+    Example:
+        >>> from src.visual.plot import anomaly_grid_from_dir
+        >>> anomaly_grid_from_dir("results/Patchcore/MVTecAD/bottle/v0/images", n_samples=8)
+        >>> anomaly_grid_from_dir("results/...", categories=['good', 'broken_small'], n_samples=4)
+    """
+    result_dir = Path(result_dir)
+
+    # 이미지 파일 수집
+    all_images = []
+    if categories:
+        for cat in categories:
+            cat_dir = result_dir / cat
+            if cat_dir.exists():
+                all_images.extend(sorted(cat_dir.glob("*.png")))
+    else:
+        all_images = sorted(result_dir.glob("*/*.png"))
+
+    if not all_images:
+        print(f"No images found in {result_dir}")
+        return None
+
+    # 샘플 수 제한
+    total = len(all_images)
+    if n_samples is not None:
+        total = min(n_samples, total)
+    all_images = all_images[:total]
+
+    n_rows = (total + n_cols - 1) // n_cols
+    figsize = (figsize_per_image[0] * n_cols, figsize_per_image[1] * n_rows)
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
+    if n_rows == 1 and n_cols == 1:
+        axes = np.array([[axes]])
+    elif n_rows == 1:
+        axes = axes.reshape(1, -1)
+    elif n_cols == 1:
+        axes = axes.reshape(-1, 1)
+
+    for i, img_path in enumerate(all_images):
+        row, col = i // n_cols, i % n_cols
+        ax = axes[row, col]
+
+        img = Image.open(img_path)
+        ax.imshow(img)
+        ax.set_title(f"{img_path.parent.name}/{img_path.name}", fontsize=8)
+        ax.axis("off")
+        # 이미지 간 경계선 추가
+        for spine in ax.spines.values():
+            spine.set_visible(True)
+            spine.set_color('gray')
+            spine.set_linewidth(2)
+
+    # 빈 칸 숨기기
+    for i in range(total, n_rows * n_cols):
+        row, col = i // n_cols, i % n_cols
+        axes[row, col].axis("off")
+
+    if title:
+        fig.suptitle(title, fontsize=14)
+
+    plt.subplots_adjust(wspace=0.1, hspace=0.3)
+    plt.tight_layout()
+    if show:
+        plt.show()
+    return fig
+
+
+def anomaly_compare_categories(
+    result_dir: str | Path,
+    categories: list | None = None,
+    n_per_category: int = 2,
+    figsize_per_image: tuple = (5, 1.5),
+    title: str | None = None,
+    show: bool = True,
+) -> plt.Figure:
+    """
+    카테고리별로 Anomalib 결과 이미지 비교 시각화
+
+    Args:
+        result_dir: Anomalib 결과 이미지 폴더 경로
+        categories: 비교할 카테고리 리스트 (None이면 전체)
+        n_per_category: 카테고리당 표시할 이미지 수
+        figsize_per_image: 이미지당 크기
+        title: 전체 제목
+        show: True면 plt.show() 호출
+
+    Returns:
+        matplotlib Figure 객체
+
+    Example:
+        >>> from src.visual.plot import anomaly_compare_categories
+        >>> anomaly_compare_categories("results/.../images", categories=['good', 'broken_large'])
+    """
+    result_dir = Path(result_dir)
+
+    # 카테고리 폴더 찾기
+    if categories is None:
+        categories = [d.name for d in result_dir.iterdir() if d.is_dir()]
+
+    n_rows = len(categories)
+    n_cols = n_per_category
+    figsize = (figsize_per_image[0] * n_cols, figsize_per_image[1] * n_rows)
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
+    if n_rows == 1:
+        axes = axes.reshape(1, -1)
+    if n_cols == 1:
+        axes = axes.reshape(-1, 1)
+
+    for row, cat in enumerate(categories):
+        cat_dir = result_dir / cat
+        if not cat_dir.exists():
+            continue
+
+        images = sorted(cat_dir.glob("*.png"))[:n_per_category]
+
+        for col, img_path in enumerate(images):
+            ax = axes[row, col]
+            img = Image.open(img_path)
+            ax.imshow(img)
+            if col == 0:
+                ax.set_ylabel(cat, fontsize=10, rotation=0, ha='right', va='center')
+            ax.set_title(img_path.name, fontsize=8)
+            ax.axis("off")
+
+        # 빈 칸 숨기기
+        for col in range(len(images), n_cols):
+            axes[row, col].axis("off")
+
+    if title:
+        fig.suptitle(title, fontsize=14)
+
+    plt.tight_layout()
+    if show:
+        plt.show()
+    return fig
