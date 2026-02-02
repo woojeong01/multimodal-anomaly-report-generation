@@ -138,6 +138,17 @@ def main() -> None:
         from anomalib.data import Folder  # type: ignore
         from anomalib.engine import Engine  # type: ignore
 
+        # anomalib's Folder datamodule signature changes across versions.
+        # Example: some versions accept `image_size`, others don't.
+        # To prevent hard failures, we filter kwargs by the runtime signature.
+        import inspect
+
+        def _safe_folder_init(**kwargs):
+            sig = inspect.signature(Folder.__init__)
+            allowed = set(sig.parameters.keys())
+            filtered = {k: v for k, v in kwargs.items() if k in allowed}
+            return Folder(**filtered)
+
         ModelCls = _import_model(args.model)
 
         model_kwargs = {}
@@ -146,7 +157,7 @@ def main() -> None:
 
         model = ModelCls(**model_kwargs) if model_kwargs else ModelCls()
 
-        datamodule = Folder(
+        datamodule = _safe_folder_init(
             name=category,
             root=str(cat_root),
             normal_dir="train/good",
