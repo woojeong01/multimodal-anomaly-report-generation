@@ -135,7 +135,7 @@ def main() -> None:
         ckpts.sort(key=lambda p: p.stat().st_mtime, reverse=True)
         return ckpts[0]
 
-    def run_one_category(category: str) -> Path:
+    def run_one_category(category: str) -> Path | None:
         ckpt = find_ckpt_for_category(category)
 
         records = load_mmad_index_csv(args.index_csv, data_root=args.data_root)
@@ -152,6 +152,15 @@ def main() -> None:
             copy_files=bool(args.copy_files),
         )
         cat_root = Path(built.root) / built.category
+
+        # Safety: anomalib Folder dataset will crash if train/good has zero images.
+        train_good_dir = cat_root / "train" / "good"
+        train_imgs = [p for p in train_good_dir.glob("*") if p.is_file()]
+        if len(train_imgs) == 0:
+            logger.warning(
+                f"Skipping category='{category}' because no normal images were found in {train_good_dir}."
+            )
+            return None
 
         from anomalib.data import Folder  # type: ignore
         from anomalib.engine import Engine  # type: ignore
@@ -213,11 +222,15 @@ def main() -> None:
         outs: list[Path] = []
         for cat in categories:
             logger.info(f"=== predict [{args.model}] category: {cat} ===")
-            outs.append(run_one_category(cat))
+            out = run_one_category(cat)
+            if out is not None:
+                outs.append(out)
         print("\n".join(str(p) for p in outs))
         return
 
     out_csv = run_one_category(args.category)
+    if out_csv is None:
+        raise SystemExit(2)
     print(str(out_csv))
 
 

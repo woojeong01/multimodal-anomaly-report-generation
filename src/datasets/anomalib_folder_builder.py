@@ -67,7 +67,9 @@ def build_anomalib_folder_dataset(
     for i, r in enumerate(train_goods):
         if not r.image_path.exists():
             raise FileNotFoundError(f"Missing image: {r.image_path}")
-        ext = r.image_path.suffix or ".png"
+        # anomalib's folder dataset extension filter can be case-sensitive in some versions.
+        # Normalize to lowercase to avoid "Found 0 ... images" when files are like ".PNG".
+        ext = (r.image_path.suffix or ".png").lower()
         dst = cat_root / "train" / "good" / f"{i:06d}{ext}"
         _safe_link(r.image_path, dst, copy=copy_files)
 
@@ -79,7 +81,7 @@ def build_anomalib_folder_dataset(
             raise FileNotFoundError(f"Missing image: {r.image_path}")
 
         if r.is_good:
-            ext = r.image_path.suffix or ".png"
+            ext = (r.image_path.suffix or ".png").lower()
             dst = cat_root / "test" / "good" / f"{good_i:06d}{ext}"
             good_i += 1
             _safe_link(r.image_path, dst, copy=copy_files)
@@ -89,12 +91,12 @@ def build_anomalib_folder_dataset(
         bad_counts.setdefault(defect, 0)
         bad_counts[defect] += 1
 
-        ext = r.image_path.suffix or ".png"
+        ext = (r.image_path.suffix or ".png").lower()
         dst = cat_root / "test" / defect / f"{bad_counts[defect]-1:06d}{ext}"
         _safe_link(r.image_path, dst, copy=copy_files)
 
         if r.mask_path is not None and r.mask_path.exists():
-            mext = r.mask_path.suffix or ".png"
+            mext = (r.mask_path.suffix or ".png").lower()
             mdst = cat_root / "ground_truth" / defect / f"{bad_counts[defect]-1:06d}{mext}"
             _safe_link(r.mask_path, mdst, copy=copy_files)
 

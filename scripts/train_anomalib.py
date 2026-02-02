@@ -111,7 +111,7 @@ def main() -> None:
             return int(requested)
         return 1
 
-    def run_one_category(category: str) -> Path:
+    def run_one_category(category: str) -> Path | None:
         # load + filter
         records = load_mmad_index_csv(args.index_csv, data_root=args.data_root)
         cat_records = filter_by_category(records, category)
@@ -120,6 +120,8 @@ def main() -> None:
                 f"No records for category='{category}'. Available categories: {sorted({r.category for r in records})[:50]}"
             )
 
+        # Split good samples into train/test. Some categories may have very few or no good samples
+        # depending on the CSV contents. We'll handle empty-train safely below.
         train_goods, test_records = split_good_train_test(cat_records, train_ratio=args.train_ratio, seed=args.seed)
 
         # build folder dataset
@@ -133,6 +135,17 @@ def main() -> None:
         )
         cat_root = Path(built.root) / built.category
         logger.info(f"Built Folder dataset at: {cat_root}")
+
+        # Safety: anomalib Folder dataset will crash if train/good has zero images.
+        # This can happen if a category has no usable good samples or extensions mismatch.
+        train_good_dir = cat_root / "train" / "good"
+        train_imgs = [p for p in train_good_dir.glob("*") if p.is_file()]
+        if len(train_imgs) == 0:
+            logger.warning(
+                f"Skipping category='{category}' because no normal images were found in {train_good_dir}. "
+                "(The CSV may contain no 'good' samples for this category, or paths may be filtered.)"
+            )
+            return None
 
         # import anomalib pieces
         from anomalib.data import Folder  # type: ignore
@@ -178,6 +191,7 @@ def main() -> None:
             logger.info(f"Model '{args.model}' will be trained for max_epochs={max_epochs}.")
 
         engine = Engine(
+            task="segmentation",
             default_root_dir=str(out_dir),
             max_epochs=max_epochs,
         )
@@ -195,13 +209,17 @@ def main() -> None:
         ckpts: list[Path] = []
         for cat in categories:
             logger.info(f"=== [{args.model}] category: {cat} ===")
-            ckpts.append(run_one_category(cat))
+            ckpt = run_one_category(cat)
+            if ckpt is not None:
+                ckpts.append(ckpt)
         # print all ckpts for convenience
         print("\n".join(str(p) for p in ckpts))
         return
 
     # single category
     ckpt = run_one_category(args.category)
+    if ckpt is None:
+        raise SystemExit(2)
     print(str(ckpt))
 
 

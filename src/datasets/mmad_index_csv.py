@@ -128,8 +128,11 @@ def split_good_train_test(
     goods = [r for r in records if r.is_good]
     bads = [r for r in records if not r.is_good]
 
+    # Some categories in MMAD_index.csv may contain only anomalous samples.
+    # In that case, return an empty train split and keep everything in test.
+    # The caller can decide to skip such categories.
     if not goods:
-        raise ValueError("No good samples found for training in the provided records.")
+        return [], bads
 
     rng = random.Random(seed)
     idx = list(range(len(goods)))
