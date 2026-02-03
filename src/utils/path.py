@@ -1,17 +1,3 @@
-"""프로젝트 경로 유틸리티
-
-❗ 이 파일은 *환경 자동 판별(Colab/로컬 체크)*이나 *하드코딩 경로*를 사용하지 않습니다.
-
-프로젝트 루트는 다음 우선순위로 결정합니다.
-
-1) 환경변수 ``MMAD_PROJECT_ROOT`` 가 있으면 그 값을 사용
-2) 없으면, 현재 파일 위치(src/utils/path.py) 기준으로 상위 2단계(= repo root)를 사용
-
-※ 어떤 검증도 하지 않습니다(요청사항: 환경 체크 제거).
-"""
-
-from __future__ import annotations
-
 import os
 from pathlib import Path
 

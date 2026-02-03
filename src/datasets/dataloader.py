@@ -6,7 +6,11 @@ from anomalib.data.datamodules.base import AnomalibDataModule
 
 
 class MMADLoader:
+    # DATASETS = ["GoodsAD"] # 단일 Test
     DATASETS = ["MVTec-AD", "VisA", "GoodsAD", "MVTec-LOCO"]
+
+    # 카테고리가 아닌 폴더 제외
+    EXCLUDE_DIRS = {"split_csv", "visa_pytorch"}
 
     def __init__(self, root: str = "dataset/MMAD"):
         self.root = Path(root)
@@ -17,7 +21,9 @@ class MMADLoader:
             return []
         return sorted([
             d.name for d in ds_path.iterdir()
-            if d.is_dir() and not d.name.startswith(".")
+            if d.is_dir()
+            and not d.name.startswith(".")
+            and d.name not in self.EXCLUDE_DIRS
         ])
 
     def mvtec_ad(self, category: str, **kwargs) -> AnomalibDataModule:
@@ -34,6 +40,17 @@ class MMADLoader:
             **kwargs
         )
 
+    # def visa(self, category: str, **kwargs) -> AnomalibDataModule:
+    #     return Folder(
+    #         name=category,
+    #         root=str(self.root / "VisA" / "visa_pytorch" / category),
+    #         normal_dir="train/good",
+    #         abnormal_dir="test/bad",
+    #         normal_test_dir="test/good",
+    #         mask_dir="ground_truth",
+    #         **kwargs
+    #     )
+
     def mvtec_loco(self, category: str, **kwargs) -> AnomalibDataModule:
         return MVTecLOCO(
             root=str(self.root / "MVTec-LOCO"),
@@ -49,7 +66,8 @@ class MMADLoader:
             normal_dir="train/good",
             abnormal_dir="test",
             normal_test_dir="test/good",
-            mask_dir="ground_truth",
+            # mask_dir 제외 - 학습에는 불필요, 이미지/마스크 확장자 충돌 방지
+            extensions=[".jpg"],  # .txt 파일 제외
             **kwargs
         )
 
