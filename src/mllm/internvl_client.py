@@ -10,7 +10,7 @@ import torchvision.transforms as T
 from PIL import Image
 from torchvision.transforms.functional import InterpolationMode
 
-from .base import BaseLLMClient, INSTRUCTION
+from .base import BaseLLMClient, INSTRUCTION, INSTRUCTION_WITH_AD, format_ad_info
 
 logger = logging.getLogger(__name__)
 
@@ -232,10 +232,17 @@ class InternVLClient(BaseLLMClient):
         query_image_path: str,
         few_shot_paths: List[str],
         questions: List[Dict[str, str]],
+        ad_info: Optional[Dict] = None,
     ) -> dict:
         """Build InternVL message format."""
+        # Select instruction based on AD info availability
+        if ad_info:
+            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+        else:
+            instruction = INSTRUCTION
+
         # Build text prompt with image placeholders
-        prompt = INSTRUCTION + "\n"
+        prompt = instruction + "\n"
 
         if few_shot_paths:
             prompt += f"Following is/are {len(few_shot_paths)} image of normal sample, which can be used as a template to compare the image being queried."
@@ -303,6 +310,7 @@ class InternVLClient(BaseLLMClient):
         query_image_path: str,
         meta: dict,
         few_shot_paths: List[str],
+        ad_info: Optional[Dict] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers with conversation history (InternVL's approach)."""
         questions, answers, question_types = self.parse_conversation(meta)
@@ -332,8 +340,14 @@ class InternVLClient(BaseLLMClient):
         pixel_values = torch.cat(images, dim=0)
         num_patches_list = [img.shape[0] for img in images]
 
+        # Select instruction based on AD info availability
+        if ad_info:
+            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+        else:
+            instruction = INSTRUCTION
+
         # Build base prompt
-        base_prompt = INSTRUCTION + "\n"
+        base_prompt = instruction + "\n"
         if few_shot_paths:
             base_prompt += f"Following is/are {len(few_shot_paths)} image of normal sample, which can be used as a template to compare the image being queried."
             for _ in few_shot_paths:

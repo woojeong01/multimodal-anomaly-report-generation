@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Tuple
 
 import cv2
 
-from .base import BaseLLMClient, INSTRUCTION, get_mime_type
+from .base import BaseLLMClient, INSTRUCTION, INSTRUCTION_WITH_AD, format_ad_info, get_mime_type
 
 
 class GeminiClient(BaseLLMClient):
@@ -83,6 +83,7 @@ class GeminiClient(BaseLLMClient):
         query_image_path: str,
         few_shot_paths: List[str],
         questions: List[Dict[str, str]],
+        ad_info: Optional[Dict] = None,
     ) -> dict:
         """Build Gemini API payload following paper's format."""
 
@@ -125,10 +126,16 @@ class GeminiClient(BaseLLMClient):
         for q in questions:
             conversation_text += f"{q['text']}\n"
 
+        # Select instruction based on AD info availability
+        if ad_info:
+            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+        else:
+            instruction = INSTRUCTION
+
         # Add text prompt
         parts.append({
             "text": (
-                INSTRUCTION +
+                instruction +
                 incontext +
                 "The last image is the query image. " +
                 "Following is the question list: \n" +
@@ -147,6 +154,7 @@ class GeminiClient(BaseLLMClient):
         query_image_path: str,
         meta: dict,
         few_shot_paths: List[str],
+        ad_info: Optional[Dict] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers following paper's Gemini approach.
 
@@ -163,7 +171,7 @@ class GeminiClient(BaseLLMClient):
 
         # First question alone (anomaly detection)
         first_question = questions[:1]
-        payload = self.build_payload(query_image_path, few_shot_paths, first_question)
+        payload = self.build_payload(query_image_path, few_shot_paths, first_question, ad_info=ad_info)
         response = self.send_request(payload)
 
         if response is None:
@@ -180,7 +188,7 @@ class GeminiClient(BaseLLMClient):
         # Remaining questions together
         if len(questions) > 1:
             remaining_questions = questions[1:]
-            payload = self.build_payload(query_image_path, few_shot_paths, remaining_questions)
+            payload = self.build_payload(query_image_path, few_shot_paths, remaining_questions, ad_info=ad_info)
             response = self.send_request(payload)
 
             if response is None:
