@@ -144,14 +144,49 @@ def load_mmad_data(json_path: str) -> dict:
 
 
 def load_ad_predictions(ad_output_path: str) -> dict:
-    """Load anomaly detection model predictions."""
+    """Load anomaly detection model predictions.
+
+    Supports multiple JSON formats:
+    1. List format: [{"image_path": "...", ...}, ...]
+    2. Dict format with image paths as keys: {"path/to/image.jpg": {...}, ...}
+    3. Dict format with "predictions" key: {"predictions": [...]}
+
+    Returns:
+        Dictionary indexed by image relative path (e.g., "GoodsAD/cigarette_box/test/bad/001.jpg")
+    """
     with open(ad_output_path, "r", encoding="utf-8") as f:
         predictions = json.load(f)
 
-    # Index by image path
+    # Handle different formats
     if isinstance(predictions, list):
-        return {p["image_path"]: p for p in predictions}
+        # List format - index by image_path
+        indexed = {}
+        for p in predictions:
+            # Try common key names for image path
+            img_key = p.get("image_path") or p.get("image") or p.get("img_path") or p.get("path")
+            if img_key:
+                # Normalize path (remove leading ./ or data_root prefix if present)
+                img_key = img_key.lstrip("./")
+                indexed[img_key] = p
+        return indexed
+    elif isinstance(predictions, dict):
+        # Check if it has a "predictions" key
+        if "predictions" in predictions:
+            return load_ad_predictions_from_list(predictions["predictions"])
+        # Already indexed by image path
+        return predictions
     return predictions
+
+
+def load_ad_predictions_from_list(predictions_list: list) -> dict:
+    """Helper to index predictions list by image path."""
+    indexed = {}
+    for p in predictions_list:
+        img_key = p.get("image_path") or p.get("image") or p.get("img_path") or p.get("path")
+        if img_key:
+            img_key = img_key.lstrip("./")
+            indexed[img_key] = p
+    return indexed
 
 
 def main():
@@ -316,14 +351,24 @@ def main():
             errors += 1
             continue
 
+        # Get AD prediction for this image if available
+        ad_info = None
+        if ad_predictions is not None:
+            # Try different path formats to find the prediction
+            ad_info = ad_predictions.get(image_rel)
+            if ad_info is None:
+                # Try with normalized path
+                normalized_path = image_rel.replace("\\", "/")
+                ad_info = ad_predictions.get(normalized_path)
+
         # Generate answers
         if args.batch_mode:
             questions, answers, predicted, q_types = llm_client.generate_answers_batch(
-                query_image_path, meta, few_shot_paths
+                query_image_path, meta, few_shot_paths, ad_info=ad_info
             )
         else:
             questions, answers, predicted, q_types = llm_client.generate_answers(
-                query_image_path, meta, few_shot_paths
+                query_image_path, meta, few_shot_paths, ad_info=ad_info
             )
 
         if predicted is None or len(predicted) != len(answers):

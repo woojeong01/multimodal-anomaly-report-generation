@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 from requests import RequestException
 
-from .base import BaseLLMClient, INSTRUCTION, get_mime_type
+from .base import BaseLLMClient, INSTRUCTION, INSTRUCTION_WITH_AD, format_ad_info, get_mime_type
 
 
 class GPT4Client(BaseLLMClient):
@@ -72,6 +72,7 @@ class GPT4Client(BaseLLMClient):
         query_image_path: str,
         few_shot_paths: List[str],
         questions: List[Dict[str, str]],
+        ad_info: Optional[Dict] = None,
     ) -> dict:
         """Build OpenAI API payload following paper's format."""
 
@@ -103,6 +104,12 @@ class GPT4Client(BaseLLMClient):
         # Encode query image
         query_base64 = self.encode_image_to_base64(query_image_path)
 
+        # Select instruction based on AD info availability
+        if ad_info:
+            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+        else:
+            instruction = INSTRUCTION
+
         # Build payload (matches paper's gpt4o.py exactly)
         payload = {
             "model": self.model,
@@ -120,7 +127,7 @@ class GPT4Client(BaseLLMClient):
                         {
                             "type": "text",
                             "text": (
-                                INSTRUCTION +
+                                instruction +
                                 incontext +
                                 "The last image is the query image" +
                                 "Following is the question list: \n" +
