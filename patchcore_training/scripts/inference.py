@@ -74,6 +74,12 @@ def parse_args():
         help="Resume from existing output file",
     )
     parser.add_argument(
+        "--threshold",
+        type=float,
+        default=None,
+        help="Anomaly score threshold (overrides config). Use score statistics to tune.",
+    )
+    parser.add_argument(
         "--seed",
         type=int,
         default=42,
@@ -119,7 +125,7 @@ def process_batch(
     model: PatchCore,
     images: torch.Tensor,
     original_sizes: List[tuple],
-    threshold: float,
+    score_threshold: float,
     device: torch.device,
 ) -> List[Dict]:
     """Process a batch of images.
@@ -128,7 +134,7 @@ def process_batch(
         model: PatchCore model
         images: Batch of images (B, C, H, W)
         original_sizes: List of original image sizes
-        threshold: Anomaly threshold
+        score_threshold: Anomaly score threshold (raw score 기준)
         device: Device
 
     Returns:
@@ -144,8 +150,15 @@ def process_batch(
 
     results = []
     for i in range(len(scores)):
-        # Normalize map
         anomaly_map = maps[i]
+        score = float(scores[i])
+
+        # Raw map stats (정규화 전)
+        raw_max = float(anomaly_map.max())
+        raw_mean = float(anomaly_map.mean())
+        raw_std = float(anomaly_map.std())
+
+        # Normalize map for visualization (0-1)
         anomaly_map_norm = normalize_anomaly_map(anomaly_map)
 
         # Resize map to original size
@@ -159,21 +172,23 @@ def process_batch(
         else:
             anomaly_map_resized = anomaly_map_norm
 
-        # Normalize score to [0, 1]
-        score = float(scores[i])
+        # is_anomaly는 raw score 기준으로 판단 (threshold는 나중에 조정 가능)
+        is_anomaly = score > score_threshold
 
-        # Compute defect location
-        location_info = compute_defect_location(anomaly_map_norm, threshold)
+        # Defect location은 normalized map에서 상위 영역 찾기
+        # threshold를 높게 설정 (0.7)해서 확실한 영역만 검출
+        location_info = compute_defect_location(anomaly_map_norm, 0.7)
 
         result = {
             "anomaly_score": round(score, 6),
-            "is_anomaly": location_info["has_defect"],
-            "threshold": threshold,
+            "is_anomaly": is_anomaly,
+            "threshold_used": score_threshold,
             "defect_location": location_info,
             "map_stats": {
-                "max": round(float(anomaly_map_norm.max()), 4),
-                "mean": round(float(anomaly_map_norm.mean()), 4),
-                "std": round(float(anomaly_map_norm.std()), 4),
+                "raw_max": round(raw_max, 4),
+                "raw_mean": round(raw_mean, 4),
+                "raw_std": round(raw_std, 4),
+                "norm_max": round(float(anomaly_map_norm.max()), 4),
             },
         }
 
@@ -200,7 +215,14 @@ def main():
     data_root = Path(config["data"]["root"])
     mmad_json_path = Path(config["data"]["mmad_json"])
     output_path = Path(args.output or config["output"]["inference_output"])
-    threshold = config.get("evaluation", {}).get("threshold", 0.5)
+
+    # Threshold (command line > config > default)
+    if args.threshold is not None:
+        threshold = args.threshold
+    else:
+        threshold = config.get("evaluation", {}).get("threshold", 0.5)
+
+    print(f"Anomaly score threshold: {threshold}")
 
     if not mmad_json_path.exists():
         print(f"Error: mmad.json not found: {mmad_json_path}")
@@ -312,7 +334,7 @@ def main():
                     model=model,
                     images=images,
                     original_sizes=original_sizes,
-                    threshold=threshold,
+                    score_threshold=threshold,
                     device=device,
                 )
 
@@ -355,6 +377,30 @@ def main():
     print(f"Skipped (no model): {skipped}")
     print(f"Errors: {errors}")
     print(f"Output saved to: {output_path}")
+
+    # Score 분포 통계 출력
+    if results:
+        all_scores = [r["anomaly_score"] for r in results]
+        scores_array = np.array(all_scores)
+
+        print(f"\n{'='*60}")
+        print("Score Statistics (for threshold tuning)")
+        print(f"{'='*60}")
+        print(f"  Min:    {scores_array.min():.4f}")
+        print(f"  Max:    {scores_array.max():.4f}")
+        print(f"  Mean:   {scores_array.mean():.4f}")
+        print(f"  Std:    {scores_array.std():.4f}")
+        print(f"  Median: {np.median(scores_array):.4f}")
+        print(f"\n  Percentiles:")
+        for p in [25, 50, 75, 90, 95, 99]:
+            print(f"    {p}%: {np.percentile(scores_array, p):.4f}")
+
+        # 현재 threshold로 분류된 결과
+        n_anomaly = sum(1 for r in results if r["is_anomaly"])
+        print(f"\n  Current threshold ({threshold}): {n_anomaly}/{len(results)} classified as anomaly")
+
+        print(f"\n  Tip: 정상 데이터가 anomaly로 분류되면 threshold를 높이세요.")
+        print(f"       예: --threshold 값을 median~75% 사이로 설정")
 
     # Print sample output
     if results:

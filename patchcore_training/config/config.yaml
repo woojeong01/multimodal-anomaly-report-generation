@@ -2,9 +2,9 @@
 
 # Data settings
 data:
-  root: "/Volumes/T7/Dataset/MMAD"
+  root: "/content/drive/MyDrive/likelion/final_project/MMAD"
   # mmad_10classes.json 경로 (inference용)
-  mmad_json: "/Volumes/T7/Dataset/MMAD/mmad_10classes.json"
+  mmad_json: "/content/drive/MyDrive/likelion/final_project/MMAD/mmad_10classes.json"
 
   # 학습할 데이터셋/클래스 목록
   datasets:
@@ -49,12 +49,12 @@ evaluation:
 
 # Output settings
 output:
-  checkpoint_dir: "patchcore_training/checkpoints"
+  checkpoint_dir: "/content/drive/MyDrive/likelion/final_project/patchcore_outputs/checkpoints"
   # 저장 형식
   save_pt: true
   save_onnx: true
   # Inference 결과 저장 경로
-  inference_output: "output/patchcore_predictions.json"
+  inference_output: "/content/drive/MyDrive/likelion/final_project/patchcore_outputs/infer/patchcore_predictions.json"
 
 # Device
 device: "cuda"  # cuda, cpu, mps
