@@ -119,7 +119,7 @@ class PatchCore(nn.Module):
         self._feature_dim = None
 
     def extract_features(self, x: torch.Tensor) -> torch.Tensor:
-        """Extract and aggregate patch features.
+        """Extract and aggregate patch features (anomalib 방식).
 
         Args:
             x: Input images (B, C, H, W)
@@ -144,6 +144,10 @@ class PatchCore(nn.Module):
 
         # Concatenate along channel dimension
         features = torch.cat(features_list, dim=1)  # (B, C_total, H, W)
+
+        # Average pooling (anomalib 방식) - local neighborhood aggregation
+        self._pooler = nn.AvgPool2d(kernel_size=3, stride=1, padding=1)
+        features = self._pooler(features)
 
         # Reshape to (B, H*W, C)
         B, C, H, W = features.shape
@@ -187,16 +191,15 @@ class PatchCore(nn.Module):
             indices = self._coreset_sampling(all_features, n_select)
             all_features = all_features[indices]
 
-        # Store in memory bank
+        # Store in memory bank (no normalization - anomalib 방식)
         self.memory_bank = all_features.to(device)
         self.is_fitted = True
         print(f"Memory bank size: {self.memory_bank.shape}")
 
     def _coreset_sampling(self, features: torch.Tensor, n_select: int) -> np.ndarray:
-        """Fast coreset sampling using random selection.
+        """Greedy k-center coreset sampling (anomalib KCenterGreedy 방식).
 
-        For faster training, uses random sampling instead of greedy farthest point.
-        Can be changed to 'greedy' method for better quality but slower speed.
+        가장 멀리 떨어진 점을 반복적으로 선택하여 대표 패치 선정.
 
         Args:
             features: All patch features (N, D)
@@ -210,12 +213,37 @@ class PatchCore(nn.Module):
         if n_select >= N:
             return np.arange(N)
 
-        # Fast random sampling (recommended for large datasets)
-        indices = np.random.choice(N, size=n_select, replace=False)
-        return indices
+        # GPU에서 계산 (가능한 경우)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        features = features.to(device)
+
+        # Greedy k-center selection (L2 distance)
+        selected_indices = []
+
+        # Start with random point
+        first_idx = np.random.randint(N)
+        selected_indices.append(first_idx)
+
+        # Min distances to selected set
+        min_distances = torch.full((N,), float('inf'), device=device)
+
+        for _ in tqdm(range(1, n_select), desc="Coreset sampling", leave=False):
+            # Update min distances with last selected point (L2 norm)
+            last_selected = features[selected_indices[-1]]
+            distances = torch.linalg.norm(features - last_selected, ord=2, dim=1)
+            min_distances = torch.minimum(min_distances, distances)
+
+            # Select point with maximum minimum distance
+            next_idx = torch.argmax(min_distances).item()
+            selected_indices.append(next_idx)
+
+            # Prevent re-selection
+            min_distances[next_idx] = -1
+
+        return np.array(selected_indices)
 
     def predict(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Predict anomaly scores and maps.
+        """Predict anomaly scores and maps (anomalib 방식).
 
         Args:
             x: Input images (B, C, H, W)
@@ -231,19 +259,26 @@ class PatchCore(nn.Module):
         features = self.extract_features(x)  # (B, N, D)
         B, N, D = features.shape
 
-        # Compute distances to memory bank
-        # features: (B, N, D), memory_bank: (M, D)
-        # distances: (B, N, M)
         features_flat = features.reshape(-1, D)  # (B*N, D)
 
-        # Compute pairwise distances
+        # Compute pairwise distances to memory bank (L2)
         distances = torch.cdist(features_flat, self.memory_bank)  # (B*N, M)
 
-        # Get k nearest neighbor distances
-        knn_distances, _ = distances.topk(self.n_neighbors, dim=1, largest=False)
+        # Get nearest neighbor distance for each patch
+        patch_scores, nearest_indices = distances.min(dim=1)  # (B*N,)
 
-        # Use mean of k nearest distances as patch score
-        patch_scores = knn_distances.mean(dim=1)  # (B*N,)
+        # Anomalib 방식: n_neighbors를 사용한 re-weighting
+        # 가장 가까운 이웃 주변의 support sample들로 weighted score 계산
+        if self.n_neighbors > 1:
+            # Get k nearest neighbors
+            knn_distances, knn_indices = distances.topk(
+                k=self.n_neighbors, dim=1, largest=False
+            )
+            # Softmax weight (가까울수록 높은 weight)
+            weights = F.softmax(-knn_distances, dim=1)
+            # Weighted average of distances
+            patch_scores = (knn_distances * weights).sum(dim=1)
+
         patch_scores = patch_scores.reshape(B, N)  # (B, N)
 
         # Reshape to spatial map
@@ -259,7 +294,7 @@ class PatchCore(nn.Module):
             align_corners=False,
         ).squeeze(1)  # (B, H_in, W_in)
 
-        # Image-level score: max of patch scores
+        # Image-level score: max of anomaly map
         anomaly_scores = anomaly_maps.reshape(B, -1).max(dim=1)[0]  # (B,)
 
         return anomaly_scores, anomaly_maps
