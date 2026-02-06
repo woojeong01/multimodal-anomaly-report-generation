@@ -34,6 +34,7 @@ dependencies = [
   "torch>=2.10.0",
   "anomalib>=2.2.0",
   "open-clip-torch>=3.2.0",
+  "wandb>=0.24.2",
 ]
 
 [tool.hatch.build.targets.wheel]

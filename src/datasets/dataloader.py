@@ -1,16 +1,45 @@
 from pathlib import Path
 from typing import Generator
-
 import pandas as pd
 import torch
+import numpy as np
+from PIL import Image
 from lightning.pytorch import LightningDataModule
 from torch.utils.data import DataLoader
+from torchvision.transforms import Compose, Resize, ToTensor
 
-from anomalib.data import MVTecAD, Visa, Folder
+from anomalib.data import MVTecAD, Visa
 from anomalib.data.datamodules.base import AnomalibDataModule
 from anomalib.data.datasets.base.image import AnomalibDataset
 from anomalib.data.dataclasses import ImageBatch, ImageItem
 from anomalib.data.utils.image import read_image, read_mask
+
+
+def collate_items(items: list) -> ImageBatch:
+    """ImageItem 리스트를 ImageBatch로 변환하는 collate 함수."""
+    # items가 리스트가 아닌 경우 처리
+    if not isinstance(items, (list, tuple)):
+        items = [items]
+
+    if len(items) == 0:
+        raise ValueError("Empty batch received in collate_items")
+
+    # 각 필드를 수집하여 배치 생성
+    image_paths = [item.image_path for item in items]
+    images = torch.stack([item.image for item in items])
+    gt_labels = torch.stack([item.gt_label for item in items])
+
+    # gt_mask 처리 - 모두 None이 아니면 스택, dtype 통일
+    gt_masks = None
+    if all(item.gt_mask is not None for item in items):
+        gt_masks = torch.stack([item.gt_mask.float() for item in items])
+
+    return ImageBatch(
+        image_path=image_paths,
+        image=images,
+        gt_label=gt_labels,
+        gt_mask=gt_masks,
+    )
 
 
 class MVTecLOCODataset(AnomalibDataset):
@@ -20,12 +49,16 @@ class MVTecLOCODataset(AnomalibDataset):
         root: Path | str,
         category: str,
         split: str = "train",
+        preprocess=None,
+        image_size: tuple[int, int] = (256, 256),
     ):
         super().__init__(augmentations=None)
         self.root = Path(root)
         self._category = category
         self.split = split
         self._samples = self.make_dataset()
+        self.preprocess = preprocess  # 통합 전처리(transform/augmentation 등)
+        self.image_size = image_size
 
     def make_dataset(self) -> pd.DataFrame:
         """MVTec-LOCO 샘플 DataFrame 생성"""
@@ -85,37 +118,36 @@ class MVTecLOCODataset(AnomalibDataset):
         return samples
 
     def __getitem__(self, index: int) -> ImageItem:
-        """마스크가 없는 샘플을 안전하게 처리"""
         sample = self.samples.iloc[index]
-        image_path = sample.image_path
-        mask_path = sample.mask_path
-        label_index = sample.label_index
+        image_np = read_image(sample.image_path)
 
-        image = read_image(image_path, as_tensor=True)
+        # PIL.Image.fromarray가 float64 타입을 처리 못하므로 uint8로 변환
+        if image_np.dtype in [np.float32, np.float64]:
+            image_np = (image_np * 255).astype(np.uint8)
+        image = Image.fromarray(image_np)
 
-        # mask_path가 유효한 문자열인 경우에만 마스크 로드
         gt_mask = None
-        if pd.notna(mask_path) and isinstance(mask_path, str) and mask_path != "":
-            gt_mask = read_mask(mask_path, as_tensor=True)
+        if pd.notna(sample.mask_path) and isinstance(sample.mask_path, str) and sample.mask_path != "":
+            gt_mask = read_mask(sample.mask_path, as_tensor=True).float()
+            if gt_mask.ndim == 2:
+                gt_mask = gt_mask.unsqueeze(0)
+            # 마스크도 이미지와 동일한 크기로 리사이즈
+            gt_mask = torch.nn.functional.interpolate(
+                gt_mask.unsqueeze(0), size=self.image_size, mode="nearest"
+            ).squeeze(0)
 
-        # augmentations 적용
-        if self.augmentations:
-            augmented = self.augmentations(image=image, mask=gt_mask) if gt_mask is not None else self.augmentations(image=image)
-            image = augmented["image"]
-            if gt_mask is not None and "mask" in augmented:
-                gt_mask = augmented["mask"]
+        if self.preprocess is not None:
+            image = self.preprocess(image)
 
-        # mask가 None이면 이미지 크기에 맞는 빈 마스크 생성 (collate 호환)
-        if gt_mask is None:
-            gt_mask = torch.zeros(image.shape[1:], dtype=torch.float32)
+        if gt_mask is None and isinstance(image, torch.Tensor):
+            gt_mask = torch.zeros((1, image.shape[1], image.shape[2]), dtype=torch.float32)
 
-        item = ImageItem(
-            image_path=image_path,
+        return ImageItem(
+            image_path=sample.image_path,
             image=image,
-            gt_label=torch.tensor(label_index),
+            gt_label=torch.tensor(sample.label_index, dtype=torch.long),
             gt_mask=gt_mask,
         )
-        return item
 
 
 class GoodsADDataset(AnomalibDataset):
@@ -125,12 +157,16 @@ class GoodsADDataset(AnomalibDataset):
         root: Path | str,
         category: str,
         split: str = "train",
+        preprocess=None,
+        image_size: tuple[int, int] = (256, 256),
     ):
         super().__init__(augmentations=None)
         self.root = Path(root)
         self._category = category
         self.split = split
         self._samples = self.make_dataset()
+        self.preprocess = preprocess
+        self.image_size = image_size
 
     def make_dataset(self) -> pd.DataFrame:
         """GoodsAD 샘플 DataFrame 생성"""
@@ -186,56 +222,50 @@ class GoodsADDataset(AnomalibDataset):
         return samples
 
     def __getitem__(self, index: int) -> ImageItem:
-        """마스크가 없는 샘플을 안전하게 처리"""
         sample = self.samples.iloc[index]
-        image_path = sample.image_path
-        mask_path = sample.mask_path
-        label_index = sample.label_index
+        image_np = read_image(sample.image_path)
 
-        image = read_image(image_path, as_tensor=True)
+        # PIL.Image.fromarray가 float64 타입을 처리 못하므로 uint8로 변환
+        if image_np.dtype in [np.float32, np.float64]:
+            image_np = (image_np * 255).astype(np.uint8)
+        image = Image.fromarray(image_np)
 
         gt_mask = None
-        if pd.notna(mask_path) and isinstance(mask_path, str) and mask_path != "":
-            gt_mask = read_mask(mask_path, as_tensor=True)
+        if pd.notna(sample.mask_path) and isinstance(sample.mask_path, str) and sample.mask_path != "":
+            gt_mask = read_mask(sample.mask_path, as_tensor=True).float()
+            if gt_mask.ndim == 2:
+                gt_mask = gt_mask.unsqueeze(0)
+            # 마스크도 이미지와 동일한 크기로 리사이즈
+            gt_mask = torch.nn.functional.interpolate(
+                gt_mask.unsqueeze(0), size=self.image_size, mode="nearest"
+            ).squeeze(0)
 
-        if self.augmentations:
-            augmented = self.augmentations(image=image, mask=gt_mask) if gt_mask is not None else self.augmentations(image=image)
-            image = augmented["image"]
-            if gt_mask is not None and "mask" in augmented:
-                gt_mask = augmented["mask"]
+        if self.preprocess is not None:
+            image = self.preprocess(image)
 
-        # mask가 None이면 이미지 크기에 맞는 빈 마스크 생성 (collate 호환)
-        if gt_mask is None:
-            gt_mask = torch.zeros(image.shape[1:], dtype=torch.float32)
+        if gt_mask is None and isinstance(image, torch.Tensor):
+            gt_mask = torch.zeros((1, image.shape[1], image.shape[2]), dtype=torch.float32)
 
-        item = ImageItem(
-            image_path=image_path,
+        return ImageItem(
+            image_path=sample.image_path,
             image=image,
-            gt_label=torch.tensor(label_index),
+            gt_label=torch.tensor(sample.label_index, dtype=torch.long),
             gt_mask=gt_mask,
         )
-        return item
 
 
 class GoodsADDataModule(LightningDataModule):
     """GoodsAD 커스텀 DataModule"""
-    def __init__(
-        self,
-        root: str | Path,
-        category: str,
-        train_batch_size: int = 32,
-        eval_batch_size: int = 32,
-        num_workers: int = 8,
-        **kwargs,
-    ):
+    def __init__(self, root, category, image_size: tuple[int, int] = (256, 256), train_batch_size=32, eval_batch_size=32, num_workers=6, **kwargs):
         super().__init__()
         self.root = Path(root)
         self.category = category
+        self.image_size = image_size
         self.train_batch_size = train_batch_size
         self.eval_batch_size = eval_batch_size
         self.num_workers = num_workers
         self._name = "GoodsAD"
-
+        self.transform = Compose([Resize(image_size, antialias=True), ToTensor()])
         self.train_data = None
         self.test_data = None
 
@@ -245,60 +275,23 @@ class GoodsADDataModule(LightningDataModule):
 
     def setup(self, stage: str | None = None) -> None:
         if stage == "fit" or stage is None:
-            self.train_data = GoodsADDataset(
-                root=self.root,
-                category=self.category,
-                split="train",
-            )
-            self.test_data = GoodsADDataset(
-                root=self.root,
-                category=self.category,
-                split="test",
-            )
-
-        if stage == "test" or stage == "predict":
+            self.train_data = GoodsADDataset(self.root, self.category, split="train", preprocess=self.transform, image_size=self.image_size)
+            self.test_data = GoodsADDataset(self.root, self.category, split="test", preprocess=self.transform, image_size=self.image_size)
+        if stage in ("test", "predict"):
             if self.test_data is None:
-                self.test_data = GoodsADDataset(
-                    root=self.root,
-                    category=self.category,
-                    split="test",
-                )
+                self.test_data = GoodsADDataset(self.root, self.category, split="test", preprocess=self.transform, image_size=self.image_size)
 
     def train_dataloader(self) -> DataLoader:
-        return DataLoader(
-            dataset=self.train_data,
-            batch_size=self.train_batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            collate_fn=ImageBatch.collate,
-        )
+        return DataLoader(self.train_data, batch_size=self.train_batch_size, shuffle=True, num_workers=self.num_workers, collate_fn=collate_items)
 
     def val_dataloader(self) -> DataLoader:
-        return DataLoader(
-            dataset=self.test_data,
-            batch_size=self.eval_batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            collate_fn=ImageBatch.collate,
-        )
+        return DataLoader(self.test_data, batch_size=self.eval_batch_size, shuffle=False, num_workers=self.num_workers, collate_fn=collate_items)
 
     def test_dataloader(self) -> DataLoader:
-        return DataLoader(
-            dataset=self.test_data,
-            batch_size=self.eval_batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            collate_fn=ImageBatch.collate,
-        )
+        return DataLoader(self.test_data, batch_size=self.eval_batch_size, shuffle=False, num_workers=self.num_workers, collate_fn=collate_items)
 
     def predict_dataloader(self) -> DataLoader:
-        return DataLoader(
-            dataset=self.test_data,
-            batch_size=self.eval_batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            collate_fn=ImageBatch.collate,
-        )
+        return DataLoader(self.test_data, batch_size=self.eval_batch_size, shuffle=False, num_workers=self.num_workers, collate_fn=collate_items)
 
 
 class MVTecLOCODataModule(LightningDataModule):
@@ -307,6 +300,7 @@ class MVTecLOCODataModule(LightningDataModule):
         self,
         root: str | Path,
         category: str,
+        image_size: tuple[int, int] = (256, 256),
         train_batch_size: int = 32,
         eval_batch_size: int = 32,
         num_workers: int = 8,
@@ -315,12 +309,13 @@ class MVTecLOCODataModule(LightningDataModule):
         super().__init__()
         self.root = Path(root)
         self.category = category
+        self.image_size = image_size
         self.train_batch_size = train_batch_size
         self.eval_batch_size = eval_batch_size
         self.num_workers = num_workers
         self._name = "MVTec-LOCO"
+        self.transform = Compose([Resize(image_size, antialias=True), ToTensor()])
 
-        # anomalib Engine 호환성
         self.train_data = None
         self.test_data = None
 
@@ -330,71 +325,32 @@ class MVTecLOCODataModule(LightningDataModule):
 
     def setup(self, stage: str | None = None) -> None:
         if stage == "fit" or stage is None:
-            self.train_data = MVTecLOCODataset(
-                root=self.root,
-                category=self.category,
-                split="train",
-            )
-            self.test_data = MVTecLOCODataset(
-                root=self.root,
-                category=self.category,
-                split="test",
-            )
-
+            self.train_data = MVTecLOCODataset(root=self.root, category=self.category, split="train", preprocess=self.transform, image_size=self.image_size)
+            self.test_data = MVTecLOCODataset(root=self.root, category=self.category, split="test", preprocess=self.transform, image_size=self.image_size)
         if stage == "test" or stage == "predict":
             if self.test_data is None:
-                self.test_data = MVTecLOCODataset(
-                    root=self.root,
-                    category=self.category,
-                    split="test",
-                )
+                self.test_data = MVTecLOCODataset(root=self.root, category=self.category, split="test", preprocess=self.transform, image_size=self.image_size)
 
     def train_dataloader(self) -> DataLoader:
-        return DataLoader(
-            dataset=self.train_data,
-            batch_size=self.train_batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            collate_fn=ImageBatch.collate,
-        )
+        return DataLoader(self.train_data, batch_size=self.train_batch_size, shuffle=True, num_workers=self.num_workers, collate_fn=collate_items)
 
     def val_dataloader(self) -> DataLoader:
-        return DataLoader(
-            dataset=self.test_data,
-            batch_size=self.eval_batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            collate_fn=ImageBatch.collate,
-        )
+        return DataLoader(self.test_data, batch_size=self.eval_batch_size, shuffle=False, num_workers=self.num_workers, collate_fn=collate_items)
 
     def test_dataloader(self) -> DataLoader:
-        return DataLoader(
-            dataset=self.test_data,
-            batch_size=self.eval_batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            collate_fn=ImageBatch.collate,
-        )
+        return DataLoader(self.test_data, batch_size=self.eval_batch_size, shuffle=False, num_workers=self.num_workers, collate_fn=collate_items)
 
     def predict_dataloader(self) -> DataLoader:
-        return DataLoader(
-            dataset=self.test_data,
-            batch_size=self.eval_batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            collate_fn=ImageBatch.collate,
-        )
+        return DataLoader(self.test_data, batch_size=self.eval_batch_size, shuffle=False, num_workers=self.num_workers, collate_fn=collate_items)
 
 
 class MMADLoader:
-    # DATASETS = ["MVTec-LOCO"]  # 단일 Test
-    DATASETS = ["GoodsAD", "MVTec-LOCO"]
-    # DATASETS = ["MVTec-AD", "VisA", "GoodsAD", "MVTec-LOCO"]
-
-    EXCLUDE_DIRS = {"split_csv", "visa_pytorch"}
-
-    def __init__(self, root: str = "dataset/MMAD"):
-        self.root = Path(root)
+    def __init__(self, config: dict, model_name: str):
+        self.config = config
+        self.model_name = model_name
+        self.root = Path(config["data"]["root"])
+        self.datasets_to_run = config["data"].get("datasets", ["MVTec-LOCO"])
+        self.EXCLUDE_DIRS = {"split_csv", "visa_pytorch"}
 
     def get_categories(self, dataset: str) -> list[str]:
         ds_path = self.root / dataset
@@ -402,44 +358,37 @@ class MMADLoader:
             return []
         return sorted([
             d.name for d in ds_path.iterdir()
-            if d.is_dir()
-            and not d.name.startswith(".")
-            and d.name not in self.EXCLUDE_DIRS
+            if d.is_dir() and not d.name.startswith(".") and d.name not in self.EXCLUDE_DIRS
         ])
 
     def mvtec_ad(self, category: str, **kwargs) -> AnomalibDataModule:
-        kwargs.pop("include_mask", None)  # MVTec-AD는 자동으로 mask 로드
-        return MVTecAD(
-            root=str(self.root / "MVTec-AD"),
-            category=category,
-            **kwargs
-        )
+        return MVTecAD(root=str(self.root / "MVTec-AD"), category=category, **kwargs)
 
     def visa(self, category: str, **kwargs) -> AnomalibDataModule:
-        kwargs.pop("include_mask", None)  # VisA는 자동으로 mask 로드
-        return Visa(
-            root=str(self.root / "VisA"),
-            category=category,
-            **kwargs
-        )
+        return Visa(root=str(self.root / "VisA"), category=category, **kwargs)
 
     def mvtec_loco(self, category: str, **kwargs) -> MVTecLOCODataModule:
-        kwargs.pop("include_mask", None)  # MVTec-LOCO는 커스텀 DataModule에서 처리
-        return MVTecLOCODataModule(
-            root=str(self.root / "MVTec-LOCO"),
-            category=category,
-            **kwargs
-        )
+        return MVTecLOCODataModule(root=str(self.root / "MVTec-LOCO"), category=category, **kwargs)
 
     def goods_ad(self, category: str, **kwargs) -> GoodsADDataModule:
-        kwargs.pop("include_mask", None)  # GoodsAD는 커스텀 DataModule에서 mask 처리
-        return GoodsADDataModule(
-            root=str(self.root / "GoodsAD"),
-            category=category,
-            **kwargs
-        )
+        return GoodsADDataModule(root=str(self.root / "GoodsAD"), category=category, **kwargs)
 
     def get_datamodule(self, dataset: str, category: str, **kwargs):
+        """DataModule 생성. config에서 기본값 로드 후, kwargs로 오버라이드 가능."""
+        img_size = tuple(self.config.get("data", {}).get("image_size", (256, 256)))
+        is_eff = (self.model_name == "efficientad")
+        training_cfg = self.config.get("training", {})
+
+        # config 기반 기본값
+        default_kwargs = {
+            "image_size": img_size,
+            "num_workers": training_cfg.get("num_workers", 4),
+            "train_batch_size": 1 if is_eff else training_cfg.get("train_batch_size", 32),
+            "eval_batch_size": training_cfg.get("eval_batch_size", 32),
+        }
+        # 전달받은 kwargs로 오버라이드
+        default_kwargs.update(kwargs)
+
         loaders = {
             "MVTec-AD": self.mvtec_ad,
             "VisA": self.visa,
@@ -449,10 +398,10 @@ class MMADLoader:
 
         if dataset not in loaders:
             raise ValueError(f"Unknown dataset: {dataset}. Available: {list(loaders.keys())}")
-        return loaders[dataset](category, **kwargs)
+        return loaders[dataset](category, **default_kwargs)
 
     def iter_all(self, **kwargs) -> Generator[tuple[str, str, LightningDataModule], None, None]:
-        for dataset in self.DATASETS:
+        for dataset in self.datasets_to_run:
             categories = self.get_categories(dataset)
             for category in categories:
                 datamodule = self.get_datamodule(dataset, category, **kwargs)
