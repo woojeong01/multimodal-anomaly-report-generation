@@ -1,0 +1,28 @@
+# Additional requirements for LLM evaluation
+# Install: pip install -r requirements-llm.txt
+
+# === Base requirements ===
+requests>=2.32.0
+tqdm>=4.66.0
+pandas>=2.0.0
+
+# === For API models (GPT-4o, Claude) ===
+# Set environment variables:
+# - OPENAI_API_KEY for GPT models
+# - ANTHROPIC_API_KEY for Claude models
+
+# === For HuggingFace models ===
+transformers>=4.40.0
+torch>=2.0.0
+accelerate>=0.27.0
+sentencepiece>=0.2.0
+
+# === Qwen2.5-VL specific ===
+qwen-vl-utils>=0.0.2
+
+# === LLaVA specific (optional - for original llava package) ===
+# pip install llava
+
+# === For evaluation metrics visualization ===
+matplotlib>=3.8.0
+seaborn>=0.13.0

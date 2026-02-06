@@ -1,0 +1,13 @@
+# Checkpoints (large model files)
+checkpoints/
+*.pt
+*.onnx
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Temp files
+*.tmp
+*.log

@@ -1,0 +1,60 @@
+# PatchCore Training Configuration
+
+# Data settings
+data:
+  root: "/content/drive/MyDrive/likelion/final_project/MMAD"
+  # mmad_10classes.json 경로 (inference용)
+  mmad_json: "/content/drive/MyDrive/likelion/final_project/MMAD/mmad_10classes.json"
+
+  # 학습할 데이터셋/클래스 목록
+  datasets:
+    MVTec-LOCO:
+      - breakfast_box
+      - juice_bottle
+      - pushpins
+      - screw_bag
+    GoodsAD:
+      - cigarette_box
+      - drink_bottle
+      - drink_can
+      - food_bottle
+      - food_box
+      - food_package
+
+  # 이미지 크기
+  image_size: 224
+
+# Model settings
+model:
+  backbone: "wide_resnet50_2"  # wide_resnet50_2, resnet18, resnet50
+  layers:
+    - "layer2"
+    - "layer3"
+  # Coreset sampling ratio (메모리 효율을 위해)
+  coreset_ratio: 0.01  # 1% of patches
+  # Feature dimension after reduction (None = no reduction)
+  reduce_dim: null
+  # Number of nearest neighbors for scoring
+  n_neighbors: 9
+
+# Training settings
+training:
+  batch_size: 32
+  num_workers: 4
+
+# Evaluation settings
+evaluation:
+  batch_size: 32
+  threshold: 0.5  # anomaly score threshold
+
+# Output settings
+output:
+  checkpoint_dir: "/content/drive/MyDrive/likelion/final_project/patchcore_outputs/checkpoints"
+  # 저장 형식
+  save_pt: true
+  save_onnx: true
+  # Inference 결과 저장 경로
+  inference_output: "/content/drive/MyDrive/likelion/final_project/patchcore_outputs/infer/patchcore_predictions.json"
+
+# Device
+device: "cuda"  # cuda, cpu, mps

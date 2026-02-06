@@ -33,6 +33,7 @@ Thumbs.db
 # ===== Etc ====
 *.pt
 *.ckpt
+*.onnx
 *.log
 *.csv
 *.sqlite

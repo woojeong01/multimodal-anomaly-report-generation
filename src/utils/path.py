@@ -31,8 +31,12 @@ def get_checkpoints_dir() -> Path:
     return ckpt_dir
 
 
-def get_outputs_dir() -> Path:
+def get_output_dir() -> Path:
     """출력 디렉토리 경로 반환 (없으면 생성)."""
-    outputs_dir = get_project_root() / "outputs"
-    outputs_dir.mkdir(parents=True, exist_ok=True)
-    return outputs_dir
+    output_dir = get_project_root() / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir
+
+
+# Alias for backward compatibility
+get_outputs_dir = get_output_dir
