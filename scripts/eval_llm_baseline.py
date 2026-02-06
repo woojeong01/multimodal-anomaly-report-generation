@@ -10,24 +10,27 @@ Supports two modes:
 2. With AD model: AD model output (heatmap/bbox) + Image + prompt → LLM
 
 Performance Optimizations (v2):
-- Batch mode (default): 1 API call per image instead of N (5-8x faster)
-- Parallel workers: Multiple concurrent API calls
+- API models: Batch mode by default (1 API call per image, 5-8x faster)
+- Local models: Incremental mode by default (better accuracy)
+- Parallel workers: Multiple concurrent API calls (API models only)
 - Buffered I/O: Save every 50 images instead of every image
 
 Usage:
-    # === Fast evaluation (default, recommended) ===
+    # === API Models (auto batch mode, fast) ===
     python scripts/eval_llm_baseline.py --model gpt-4o --few-shot 1 --similar-template
+    python scripts/eval_llm_baseline.py --model claude --few-shot 1 --similar-template
+    python scripts/eval_llm_baseline.py --model gemini --few-shot 1 --similar-template
 
     # === With parallel workers (API models, 2-3x faster) ===
     python scripts/eval_llm_baseline.py --model gpt-4o --parallel 3
 
-    # === Paper's original protocol (slower, for reproducibility) ===
-    python scripts/eval_llm_baseline.py --model gpt-4o --incremental-mode
-
-    # === HuggingFace Models (Local GPU) ===
+    # === Local Models (auto incremental mode, accurate) ===
     python scripts/eval_llm_baseline.py --model qwen --few-shot 1 --similar-template
     python scripts/eval_llm_baseline.py --model internvl --few-shot 1 --similar-template
     python scripts/eval_llm_baseline.py --model llava --few-shot 1 --similar-template
+
+    # === Force batch mode for local models (faster but less accurate) ===
+    python scripts/eval_llm_baseline.py --model llava --batch-mode
 
     # === With Anomaly Detection Model ===
     python scripts/eval_llm_baseline.py --model gpt-4o --with-ad --ad-output output/ad_predictions.json
@@ -219,10 +222,10 @@ def main():
                         help="Use similar templates instead of random")
     parser.add_argument("--max-images", type=int, default=None,
                         help="Max images to evaluate (for testing)")
-    parser.add_argument("--batch-mode", action="store_true", default=True,
-                        help="Ask all questions in one API call (default: True, 5-8x faster)")
+    parser.add_argument("--batch-mode", action="store_true",
+                        help="Ask all questions in one API call (faster, good for API models)")
     parser.add_argument("--incremental-mode", action="store_true",
-                        help="Ask questions incrementally (paper's original protocol, slower)")
+                        help="Ask questions one by one (slower but more accurate, default for local models)")
     parser.add_argument("--save-interval", type=int, default=50,
                         help="Save results every N images (default: 50)")
     parser.add_argument("--parallel", type=int, default=1,
@@ -288,8 +291,23 @@ def main():
     print("=" * 60)
     print("MMAD LLM Evaluation")
     print("=" * 60)
-    # Determine batch mode (incremental overrides batch)
-    use_batch_mode = args.batch_mode and not args.incremental_mode
+    # Determine batch mode
+    # - API models (GPT-4o, Claude, Gemini): batch mode by default (5-8x faster)
+    # - Local models (LLaVA, Qwen, InternVL): incremental mode by default (better accuracy)
+    # User can override with --batch-mode or --incremental-mode
+    model_info = MODEL_REGISTRY.get(args.model.lower(), {})
+    is_local_model = model_info.get("type") == "local"
+
+    if args.batch_mode and args.incremental_mode:
+        print("Warning: Both --batch-mode and --incremental-mode specified. Using incremental.")
+        use_batch_mode = False
+    elif args.batch_mode:
+        use_batch_mode = True
+    elif args.incremental_mode:
+        use_batch_mode = False
+    else:
+        # Auto-detect based on model type
+        use_batch_mode = not is_local_model  # API models use batch, local models use incremental
 
     print(f"Model: {args.model}")
     if args.model_path:
