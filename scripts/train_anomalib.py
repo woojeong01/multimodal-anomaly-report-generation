@@ -22,7 +22,7 @@ import torch
 from anomalib.models import Patchcore, WinClip, EfficientAd
 from anomalib.models.image.efficient_ad.torch_model import EfficientAdModelSize
 from anomalib.engine import Engine
-from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.callbacks import Callback, EarlyStopping
 
 # PyTorch 2.6+ weights_only=True 대응: Anomalib 클래스 허용
 torch.serialization.add_safe_globals([EfficientAdModelSize])
@@ -57,43 +57,104 @@ class EpochProgressCallback(Callback):
             parts.append(f"F1={float(f1):.4f}")
 
         print(" | ".join(parts), flush=True)
-        print(f"DEBUG: Available metrics: {metrics}", flush=True)
+
+
+class EarlyStoppingTracker(Callback):
+    """Early Stopping 이벤트를 추적하고 wandb에 기록하는 콜백."""
+
+    def __init__(self, early_stopping_config: dict):
+        super().__init__()
+        self.config = early_stopping_config
+
+    def on_train_end(self, trainer, pl_module):
+        """학습 종료 시 early stopping 정보를 wandb에 기록."""
+        import wandb
+
+        # EarlyStopping 콜백에서 정보 추출
+        early_stopping_cb = None
+        for cb in trainer.callbacks:
+            if isinstance(cb, EarlyStopping):
+                early_stopping_cb = cb
+                break
+
+        if early_stopping_cb is None:
+            return
+
+        # Early stopping으로 종료되었는지 확인
+        was_early_stopped = trainer.current_epoch < (trainer.max_epochs - 1)
+        stopped_epoch = trainer.current_epoch + 1
+        best_score = early_stopping_cb.best_score
+        patience = self.config.get("patience", 10)
+
+        # 콘솔 출력
+        if was_early_stopped:
+            print(f"\n⚡ Early Stopping triggered at epoch {stopped_epoch}")
+            print(f"   Best {self.config.get('monitor', 'metric')}: {best_score:.4f}")
+            logger.info(f"Early Stopping at epoch {stopped_epoch}, best score: {best_score:.4f}")
+
+        # wandb에 기록 (2가지만)
+        if wandb.run is not None:
+            wandb.run.summary["early_stopping/patience_setting"] = patience  # 초기 patience 설정값
+            wandb.run.summary["early_stopping/stopped_epoch"] = stopped_epoch  # 실제 종료된 epoch
 
 
 class Anomalibs:
     def __init__(self, config_path: str = "configs/runtime.yaml"):
         self.config = load_config(config_path)
-
-        # model
         self.model_name = self.config["anomaly"]["model"]
         self.model_params = self.filter_none(
             self.config["anomaly"].get(self.model_name, {})
         )
-
-        # training
         self.training_config = self.filter_none(
             self.config.get("training", {})
         )
-
-        # data
         self.data_root = Path(self.config["data"]["root"])
         self.output_root = Path(self.config["data"]["output_root"])
-
-        # engine
         self.output_config = self.config.get("output", {})
         self.engine_config = self.config.get("engine", {})
-
-        # device (for logging)
         self.device = get_device()
-
-        # MMAD loader
-        self.loader = MMADLoader(root=str(self.data_root))
-
+        self.loader = MMADLoader(config=self.config, model_name=self.model_name)
         logger.info(f"Initialized - model: {self.model_name}, device: {self.device}")
+
+    @staticmethod
+    def cleanup_memory():
+        """GPU 및 시스템 메모리 캐시 강제 비활성화 및 정리"""
+        import gc
+        gc.collect() # Python 가비지 컬렉션
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache() # PyTorch CUDA 캐시 비움
+            torch.cuda.ipc_collect() # IPC 메모리 비움
 
     @staticmethod
     def filter_none(d: dict) -> dict:
         return {k: v for k, v in d.items() if v is not None}
+
+    # 모델별 checkpoint/early_stopping monitor 설정
+    # - patchcore: 1 epoch만 학습, metric 로깅 없음 → monitor=None
+    # - efficientad: iterative 학습, train_loss가 매 epoch 로깅됨
+    # - winclip: zero-shot, 학습 없음
+    MODEL_METRICS = {
+        "patchcore": {"monitor": None, "mode": "max"},
+        "efficientad": {"monitor": "train_loss", "mode": "min"},
+        "winclip": {"monitor": None, "mode": "max"},
+    }
+
+    def get_evaluator(self):
+        """val_metrics 포함 Evaluator 생성 (validation 시 메트릭 로깅용)"""
+        from anomalib.metrics import AUROC, F1Score
+        from anomalib.metrics.evaluator import Evaluator
+
+        val_metrics = [
+            AUROC(fields=["pred_score", "gt_label"], prefix="image_"),
+            F1Score(fields=["pred_label", "gt_label"], prefix="image_", strict=False),
+        ]
+        test_metrics = [
+            AUROC(fields=["pred_score", "gt_label"], prefix="image_"),
+            F1Score(fields=["pred_label", "gt_label"], prefix="image_"),
+            AUROC(fields=["anomaly_map", "gt_mask"], prefix="pixel_", strict=False),
+            F1Score(fields=["pred_mask", "gt_mask"], prefix="pixel_", strict=False),
+        ]
+        return Evaluator(val_metrics=val_metrics, test_metrics=test_metrics)
 
     def get_model(self):
         if self.model_name == "patchcore":
@@ -118,7 +179,10 @@ class Anomalibs:
             kwargs["num_workers"] = self.training_config["num_workers"]
         return kwargs
 
-    def get_engine(self, dataset: str = None, category: str = None, model=None, datamodule=None, stage: str = None):
+    def get_engine(self, dataset: str = None, category: str = None, model=None, datamodule=None, stage: str = None, version_dir: Path = None, is_resume: bool = False):
+        # Anomalib의 ModelCheckpoint를 사용해야 _setup_anomalib_callbacks()에서 중복 추가 방지
+        from anomalib.callbacks.checkpoint import ModelCheckpoint
+
         # WandB logger 설정 (predict 시에는 비활성화)
         logger_config = self.engine_config.get("logger", False)
         if logger_config == "wandb":
@@ -139,31 +203,80 @@ class Anomalibs:
                 if batch_size is None:
                     batch_size = 1 if self.model_name == "efficientad" else 32
 
-                # max_epochs 추출
+                img_size = self.config.get("data", {}).get("image_size", (256, 256))
                 max_epochs = self.training_config.get("max_epochs") or 100
-
-                # model hyperparams
                 lr = getattr(model, "lr", None) if model else None
                 weight_decay = getattr(model, "weight_decay", None) if model else None
+                train_data = getattr(datamodule, "train_data", None)
+                num_train_img = len(train_data) if train_data is not None else 0
+
+                # run_name 조합: {dataset}_{category} 또는 {dataset}_{category}_{custom}
+                wandb_config = self.config.get("wandb", {})
+                custom_name = wandb_config.get("run_name")
+                if custom_name:
+                    run_name = f"{dataset}_{category}_{custom_name}"
+                else:
+                    run_name = f"{dataset}_{category}"
+
+                # Early Stopping 설정 추출
+                es_config = self.training_config.get("early_stopping", {})
 
                 logger_config = WandbLogger(
-                    project=self.config.get("wandb", {}).get("project", "mmad-anomaly"),
-                    name=f"{dataset}-{category}",
+                    project=wandb_config.get("project", "mmad-anomaly"),
+                    name=run_name,
                     tags=[self.model_name, dataset, category],
                     config={
                         "model": self.model_name,
                         "dataset": dataset,
                         "category": category,
+                        "image_size": img_size,
+                        "num_train_img": num_train_img,
                         "device": gpu_name,
                         "batch_size": batch_size,
-                        "epoch": max_epochs,
+                        "max_epochs": max_epochs,
                         "lr": lr,
                         "weight_decay": weight_decay,
+                        "early_stopping_patience": es_config.get("patience", 10) if es_config.get("enabled") else None,
                     },
                 )
 
         enable_progress = self.engine_config.get("enable_progress_bar", False)
         callbacks = [] if enable_progress else [EpochProgressCallback()]
+
+        # --- Custom Callbacks for Checkpoint and Visualizer ---
+
+        # 1. ModelCheckpoint Callback - predict 시에는 불필요
+        if dataset and category and stage != "predict" and version_dir:
+            checkpoint_dir = version_dir
+            # version_dir는 fit()에서 이미 생성됨
+
+            monitor_cfg = self.MODEL_METRICS.get(
+                self.model_name, {"monitor": "image_AUROC", "mode": "max"}
+            )
+
+            # PatchCore/WinCLIP: monitor=None이면 매 epoch 저장 (1 epoch만 학습)
+            if monitor_cfg["monitor"] is None:
+                model_checkpoint_callback = ModelCheckpoint(
+                    dirpath=str(checkpoint_dir),
+                    filename="model",
+                    save_top_k=-1,  # 모든 checkpoint 저장
+                    every_n_epochs=1,
+                    auto_insert_metric_name=False,
+                )
+            else:
+                # EfficientAd: metric 기반 best model 저장
+                model_checkpoint_callback = ModelCheckpoint(
+                    dirpath=str(checkpoint_dir),
+                    filename="model",
+                    save_last=False,
+                    save_top_k=1,
+                    monitor=monitor_cfg["monitor"],
+                    mode=monitor_cfg["mode"],
+                    auto_insert_metric_name=False,
+                )
+            callbacks.append(model_checkpoint_callback)
+        # If dataset/category not available, default ModelCheckpoint might still be added by Anomalib.
+        # Or, if this is a predict-only scenario without training, no checkpoint is needed.
 
         # Visualizer Callback (yaml에서 visualizer: true일 때만)
         visualizer_enabled = self.model_params.get("visualizer", False)
@@ -191,26 +304,42 @@ class Anomalibs:
             except Exception as e:
                 logger.warning(f"Visualizer callback not available: {e}")
 
-        # 1. ModelCheckpoint - save_last만 사용 (AUROC 모니터링 안 함)
-        #    PatchCore 등은 학습 중 AUROC를 로깅하지 않으므로 monitor 사용 불가
-        from pytorch_lightning.callbacks import ModelCheckpoint
-        if dataset and category:
-            checkpoint_dir = (
-                self.output_root
-                / self.MODEL_DIR_MAP.get(self.model_name, self.model_name.capitalize())
-                / dataset
-                / category
-                / "v0"
-            )
-            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        # 3. Early Stopping Callback (fit 시에만, 특정 모델만)
+        # PatchCore: memory-bank 기반, 1 epoch만 학습 → early stopping 불필요
+        # WinCLIP: zero-shot, 학습 없음 → early stopping 불필요
+        # EfficientAd: iterative 학습 → early stopping 유용
+        early_stop_config = self.training_config.get("early_stopping", {})
+        models_need_early_stopping = ["efficientad"]  # early stopping이 유용한 모델 목록
 
-            model_checkpoint_callback = ModelCheckpoint(
-                dirpath=str(checkpoint_dir),
-                filename="model",
-                save_last=True,   # last.ckpt로 저장
-                save_top_k=0,     # 메트릭 기반 저장 비활성화 (monitor 사용 안 함)
+        if (
+            early_stop_config.get("enabled", False)
+            and stage != "predict"
+            and self.model_name in models_need_early_stopping
+        ):
+            # 모델별 메트릭 설정 사용 (checkpoint와 동일하게)
+            model_metric = self.MODEL_METRICS.get(
+                self.model_name, {"monitor": "image_AUROC", "mode": "max"}
             )
-            callbacks.append(model_checkpoint_callback)
+            es_monitor = model_metric["monitor"]
+            es_mode = model_metric["mode"]
+
+            early_stopping_callback = EarlyStopping(
+                monitor=es_monitor,
+                patience=early_stop_config.get("patience", 10),
+                mode=es_mode,
+                verbose=True,
+                check_on_train_epoch_end=True,  # validation이 아닌 train epoch 후 체크
+            )
+            callbacks.append(early_stopping_callback)
+
+            # Early Stopping 추적 콜백 추가 (wandb 로깅용)
+            callbacks.append(EarlyStoppingTracker(early_stop_config))
+            logger.info(
+                f"Early Stopping enabled: monitor={es_monitor}, "
+                f"patience={early_stop_config.get('patience')}, mode={es_mode}"
+            )
+        elif early_stop_config.get("enabled", False) and self.model_name not in models_need_early_stopping:
+            logger.info(f"Early Stopping skipped: {self.model_name} doesn't need iterative training")
 
         kwargs = {
             "accelerator": self.engine_config.get("accelerator", "auto"),
@@ -219,12 +348,19 @@ class Anomalibs:
             "logger": logger_config,
             "enable_progress_bar": enable_progress,
             "callbacks": callbacks,
-            # anomalib 내부 ModelCheckpoint 비활성화
-            "enable_checkpointing": False if (dataset and category) else True,
         }
 
         if "max_epochs" in self.training_config:
             kwargs["max_epochs"] = self.training_config["max_epochs"]
+
+        # min_epochs 설정 (early stopping이 실제 적용되는 모델에만)
+        if (
+            early_stop_config.get("enabled", False)
+            and early_stop_config.get("min_epochs")
+            and self.model_name in models_need_early_stopping
+        ):
+            kwargs["min_epochs"] = early_stop_config["min_epochs"]
+
         return Engine(**kwargs)
 
     # Anomalib이 저장하는 실제 폴더명 매핑
@@ -234,21 +370,64 @@ class Anomalibs:
         "efficientad": "EfficientAd",
     }
 
+    def get_category_dir(self, dataset: str, category: str) -> Path:
+        """카테고리 디렉토리 경로 반환."""
+        model_dir = self.MODEL_DIR_MAP.get(self.model_name, self.model_name.capitalize())
+        return self.output_root / model_dir / dataset / category
+
+    def get_latest_version(self, dataset: str, category: str) -> int | None:
+        """가장 최신 버전 번호 반환. 없으면 None."""
+        category_dir = self.get_category_dir(dataset, category)
+        if not category_dir.exists():
+            return None
+
+        versions = []
+        for d in category_dir.iterdir():
+            if d.is_dir() and d.name.startswith("v"):
+                try:
+                    versions.append(int(d.name[1:]))
+                except ValueError:
+                    continue
+        return max(versions) if versions else None
+
+    def get_version_dir(self, dataset: str, category: str, create_new: bool = False) -> Path:
+        """
+        버전 디렉토리 경로 반환.
+        - create_new=False (resume): 최신 버전 사용, 없으면 v0 생성
+        - create_new=True (new training): 다음 버전 생성
+        """
+        category_dir = self.get_category_dir(dataset, category)
+        latest = self.get_latest_version(dataset, category)
+
+        if create_new:
+            # 새 학습: 다음 버전 생성
+            new_version = 0 if latest is None else latest + 1
+            version_dir = category_dir / f"v{new_version}"
+            version_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Created new version directory: {version_dir}")
+            return version_dir
+        else:
+            # Resume: 최신 버전 사용
+            if latest is not None:
+                return category_dir / f"v{latest}"
+            else:
+                # 버전 폴더 없으면 v0 생성
+                version_dir = category_dir / "v0"
+                version_dir.mkdir(parents=True, exist_ok=True)
+                return version_dir
+
     def get_ckpt_path(self, dataset: str, category: str) -> Path | None:
+        """최신 버전의 체크포인트 경로 반환."""
         if self.model_name == "winclip":
             return None
 
-        model_dir = self.MODEL_DIR_MAP.get(self.model_name, self.model_name.capitalize())
-        base_dir = self.output_root / model_dir / dataset / category / "v0"
+        latest = self.get_latest_version(dataset, category)
+        if latest is None:
+            return None
 
-        # 여러 체크포인트 패턴 확인 (last.ckpt 또는 model.ckpt)
-        for ckpt_name in ["last.ckpt", "model.ckpt"]:
-            ckpt_path = base_dir / ckpt_name
-            if ckpt_path.exists():
-                return ckpt_path
-
-        # 기본값 반환 (파일이 없어도)
-        return base_dir / "last.ckpt"
+        category_dir = self.get_category_dir(dataset, category)
+        ckpt_path = category_dir / f"v{latest}" / "model.ckpt"
+        return ckpt_path if ckpt_path.exists() else None
 
     def requires_fit(self) -> bool:
         return self.model_name != "winclip"
@@ -260,38 +439,43 @@ class Anomalibs:
 
         logger.info(f"Fitting {self.model_name} - {dataset}/{category}")
 
-        # --- Resume logic based on config ---
+        # --- Resume/Version 관리 ---
         resume_training = self.training_config.get("resume", False)
         ckpt_path_to_use = None
+        is_resume = False  # 실제로 이어서 학습하는지 여부
 
         if resume_training:
-            # If resuming, check if checkpoint exists
+            # Resume: 최신 버전 폴더 사용, 체크포인트 있으면 이어서 학습
+            version_dir = self.get_version_dir(dataset, category, create_new=False)
             potential_ckpt_path = self.get_ckpt_path(dataset, category)
             if potential_ckpt_path and potential_ckpt_path.exists():
                 ckpt_path_to_use = str(potential_ckpt_path)
-                logger.info(f"Resume is true. Found checkpoint, resuming from: {ckpt_path_to_use}")
+                is_resume = True
+                logger.info(f"Resuming from: {ckpt_path_to_use}")
             else:
-                logger.info("Resume is true, but no checkpoint found. Starting new training.")
+                logger.info(f"Resume enabled but no checkpoint found. Training in: {version_dir}")
         else:
-            # If not resuming, delete old directory to ensure a fresh start
-            import shutil
-            model_dir_name = self.MODEL_DIR_MAP.get(self.model_name, self.model_name.capitalize())
-            output_dir_to_clear = self.output_root / model_dir_name / dataset / category
-            if output_dir_to_clear.exists():
-                logger.info(f"Resume is false. Deleting old directory to start fresh: {output_dir_to_clear}")
-                shutil.rmtree(output_dir_to_clear)
+            # New training: 새 버전 폴더 생성
+            version_dir = self.get_version_dir(dataset, category, create_new=True)
+            logger.info(f"New training in: {version_dir}")
 
         model = self.get_model()
         dm_kwargs = self.get_datamodule_kwargs()
         datamodule = self.loader.get_datamodule(dataset, category, **dm_kwargs)
-        engine = self.get_engine(dataset, category, model=model, datamodule=datamodule)
-        
+        engine = self.get_engine(dataset, category, model=model, datamodule=datamodule, version_dir=version_dir, is_resume=is_resume)
+
         engine.fit(datamodule=datamodule, model=model, ckpt_path=ckpt_path_to_use)
 
         # WandB run 종료 (카테고리별로 별도 run)
         import wandb
         if wandb.run is not None:
             wandb.finish()
+
+        # 메모리 해제
+        del engine
+        del model
+        del datamodule
+        self.cleanup_memory()
 
         logger.info(f"Fitting {dataset}/{category} done")
         return self
@@ -386,14 +570,13 @@ class Anomalibs:
         json_path = output_dir / "predictions.json"
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
-
         logger.info(f"Saved predictions JSON: {json_path}")
 
     def get_all_categories(self) -> list[tuple[str, str]]:
         """Get list of (dataset, category) tuples from DATASETS."""
         return [
             (dataset, category)
-            for dataset in self.loader.DATASETS
+            for dataset in self.loader.datasets_to_run
             for category in self.loader.get_categories(dataset)
         ]
 
@@ -414,8 +597,14 @@ class Anomalibs:
                 if not category_dir.is_dir():
                     continue
                 category = category_dir.name
-                ckpt = category_dir / "v0/model.ckpt"
-                if ckpt.exists():
+                # 모든 버전 폴더에서 체크포인트 찾기
+                has_checkpoint = False
+                for version_dir in category_dir.iterdir():
+                    if version_dir.is_dir() and version_dir.name.startswith("v"):
+                        if (version_dir / "model.ckpt").exists():
+                            has_checkpoint = True
+                            break
+                if has_checkpoint:
                     trained.append((dataset, category))
         return trained
 
