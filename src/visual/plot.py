@@ -8,6 +8,7 @@ import matplotlib.font_manager as font_manager
 from matplotlib import rc
 import seaborn as sns
 from PIL import Image
+import torch
 
 
 def set_korean_font(verbose: bool = False) -> bool:
@@ -244,199 +245,393 @@ def heatmap_plot(data, ax=None, figsize=(12, 8), cmap='Blues', annot=True, fmt='
     return ax
 
 
-def anomaly_image_plot(
-    image_path: str | Path,
-    figsize: tuple = (16, 4),
-    title: str | None = None,
-    show: bool = True,
-) -> plt.Figure:
-    """
-    Anomalib이 저장한 단일 결과 이미지 시각화
+# Anomaly Detection Visualization Functions
 
-    Args:
-        image_path: Anomalib 결과 이미지 경로
-        figsize: figure 크기
-        title: 제목 (None이면 파일명 사용)
-        show: True면 plt.show() 호출
-
-    Returns:
-        matplotlib Figure 객체
-
-    Example:
-        >>> from src.visual.plot import anomaly_image_plot
-        >>> anomaly_image_plot("results/Patchcore/MVTecAD/bottle/v0/images/broken_small/000.png")
-    """
-    image_path = Path(image_path)
-    img = Image.open(image_path)
-
-    fig, ax = plt.subplots(figsize=figsize)
-    ax.imshow(img)
-    ax.axis("off")
-    ax.set_title(title if title else f"{image_path.parent.name}/{image_path.name}")
-
-    plt.tight_layout()
-    if show:
-        plt.show()
-    return fig
-
-
-def anomaly_grid_from_dir(
-    result_dir: str | Path,
-    n_cols: int = 2,
-    n_samples: int | None = None,
-    figsize_per_image: tuple = (8, 2),
-    categories: list | None = None,
-    title: str | None = None,
-    show: bool = True,
-) -> plt.Figure:
-    """
-    Anomalib 결과 폴더에서 이미지를 로드하여 그리드로 시각화
-
-    Args:
-        result_dir: Anomalib 결과 이미지 폴더 경로 (예: results/Patchcore/MVTecAD/bottle/v0/images)
-        n_cols: 열 개수
-        n_samples: 표시할 샘플 수 (None이면 전체)
-        figsize_per_image: 이미지당 크기
-        categories: 표시할 카테고리 리스트 (None이면 전체, 예: ['good', 'broken_small'])
-        title: 전체 제목
-        show: True면 plt.show() 호출
-
-    Returns:
-        matplotlib Figure 객체
-
-    Example:
-        >>> from src.visual.plot import anomaly_grid_from_dir
-        >>> anomaly_grid_from_dir("results/Patchcore/MVTecAD/bottle/v0/images", n_samples=8)
-        >>> anomaly_grid_from_dir("results/...", categories=['good', 'broken_small'], n_samples=4)
-    """
-    result_dir = Path(result_dir)
-
-    # 이미지 파일 수집
-    all_images = []
-    if categories:
-        for cat in categories:
-            cat_dir = result_dir / cat
-            if cat_dir.exists():
-                all_images.extend(sorted(cat_dir.glob("*.png")))
-    else:
-        all_images = sorted(result_dir.glob("*/*.png"))
-
-    if not all_images:
-        print(f"No images found in {result_dir}")
+def tensor_to_numpy(tensor):
+    """Tensor를 numpy 배열로 변환"""
+    if tensor is None:
         return None
+    if isinstance(tensor, torch.Tensor):
+        tensor = tensor.detach().cpu()
+        if tensor.ndim == 4:
+            tensor = tensor[0]
+        if tensor.ndim == 3:
+            if tensor.shape[0] in [1, 3]:
+                tensor = tensor.permute(1, 2, 0)
+            if tensor.shape[-1] == 1:
+                tensor = tensor.squeeze(-1)
+        tensor = tensor.numpy()
+    return tensor
 
-    # 샘플 수 제한
-    total = len(all_images)
-    if n_samples is not None:
-        total = min(n_samples, total)
-    all_images = all_images[:total]
 
-    n_rows = (total + n_cols - 1) // n_cols
-    figsize = (figsize_per_image[0] * n_cols, figsize_per_image[1] * n_rows)
+def load_original_image(image_path: str | Path, target_size: tuple = None) -> np.ndarray:
+    """원본 이미지를 직접 로드 (정규화 없이)"""
+    img = Image.open(image_path).convert("RGB")
+    if target_size:
+        img = img.resize(target_size, Image.Resampling.LANCZOS)
+    return np.array(img) / 255.0  # 0-1 스케일
 
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
-    if n_rows == 1 and n_cols == 1:
-        axes = np.array([[axes]])
-    elif n_rows == 1:
-        axes = axes.reshape(1, -1)
-    elif n_cols == 1:
-        axes = axes.reshape(-1, 1)
 
-    for i, img_path in enumerate(all_images):
-        row, col = i // n_cols, i % n_cols
-        ax = axes[row, col]
+def visualize_anomaly_prediction(
+    image_path: str | Path,
+    anomaly_map: np.ndarray | torch.Tensor = None,
+    pred_mask: np.ndarray | torch.Tensor = None,
+    gt_mask: np.ndarray | torch.Tensor = None,
+    pred_score: float = None,
+    pred_label: int = None,
+    figsize: tuple = (16, 4),
+    cmap: str = "jet",
+    alpha: float = 0.5,
+    title: str = None,
+    show: bool = True,
+) -> plt.Figure:
+    """
+    Anomaly Detection 예측 결과 시각화
 
-        img = Image.open(img_path)
-        ax.imshow(img)
-        ax.set_title(f"{img_path.parent.name}/{img_path.name}", fontsize=8)
-        ax.axis("off")
-        # 이미지 간 경계선 추가
-        for spine in ax.spines.values():
-            spine.set_visible(True)
-            spine.set_color('gray')
-            spine.set_linewidth(2)
+    Args:
+        image_path: 원본 이미지 경로 (검은 이미지 문제 해결을 위해 직접 로드)
+        anomaly_map: 이상 히트맵
+        pred_mask: 예측 마스크
+        gt_mask: Ground Truth 마스크
+        pred_score: 예측 점수
+        pred_label: 예측 라벨 (0: normal, 1: anomaly)
+        figsize: figure 크기
+        cmap: anomaly_map 컬러맵
+        alpha: overlay 투명도
+        title: 전체 제목
+        show: plt.show() 호출 여부
 
-    # 빈 칸 숨기기
-    for i in range(total, n_rows * n_cols):
-        row, col = i // n_cols, i % n_cols
-        axes[row, col].axis("off")
+    Returns:
+        matplotlib Figure
+    """
+    # 원본 이미지 직접 로드 (정규화 문제 해결)
+    image = load_original_image(image_path)
 
+    # Tensor → Numpy 변환
+    anomaly_map = tensor_to_numpy(anomaly_map)
+    pred_mask = tensor_to_numpy(pred_mask)
+    gt_mask = tensor_to_numpy(gt_mask)
+
+    # anomaly_map 크기 맞추기 & 정규화
+    if anomaly_map is not None:
+        if anomaly_map.shape[:2] != image.shape[:2]:
+            from skimage.transform import resize
+            anomaly_map = resize(anomaly_map, image.shape[:2], preserve_range=True)
+        if anomaly_map.max() > anomaly_map.min():
+            anomaly_map = (anomaly_map - anomaly_map.min()) / (anomaly_map.max() - anomaly_map.min())
+
+    # pred_mask 크기 맞추기
+    if pred_mask is not None and pred_mask.shape[:2] != image.shape[:2]:
+        from skimage.transform import resize
+        pred_mask = resize(pred_mask, image.shape[:2], preserve_range=True)
+
+    # gt_mask 크기 맞추기
+    if gt_mask is not None and gt_mask.shape[:2] != image.shape[:2]:
+        from skimage.transform import resize
+        gt_mask = resize(gt_mask, image.shape[:2], preserve_range=True)
+
+    # 패널 구성
+    panels = ["Image"]
+    if gt_mask is not None:
+        panels.append("GT Mask")
+    if anomaly_map is not None:
+        panels.append("Image + Anomaly Map")
+    if pred_mask is not None:
+        panels.append("Image + Pred Mask")
+
+    n_panels = len(panels)
+    fig, axes = plt.subplots(1, n_panels, figsize=figsize)
+    if n_panels == 1:
+        axes = [axes]
+
+    panel_idx = 0
+
+    # 1. Original Image
+    axes[panel_idx].imshow(image)
+    axes[panel_idx].set_title("Image", fontsize=12, color="blue")
+    axes[panel_idx].axis("off")
+    panel_idx += 1
+
+    # 2. GT Mask
+    if gt_mask is not None:
+        axes[panel_idx].imshow(gt_mask, cmap="gray")
+        axes[panel_idx].set_title("GT Mask", fontsize=12, color="blue")
+        axes[panel_idx].axis("off")
+        panel_idx += 1
+
+    # 3. Image + Anomaly Map
+    if anomaly_map is not None:
+        axes[panel_idx].imshow(image)
+        axes[panel_idx].imshow(anomaly_map, cmap=cmap, alpha=alpha)
+        axes[panel_idx].set_title("Image + Anomaly Map", fontsize=12, color="blue")
+        axes[panel_idx].axis("off")
+        panel_idx += 1
+
+    # 4. Image + Pred Mask (Contour)
+    if pred_mask is not None:
+        axes[panel_idx].imshow(image)
+        if pred_mask.max() > 0:
+            axes[panel_idx].contour(pred_mask, levels=[0.5], colors=["red"], linewidths=2)
+        axes[panel_idx].set_title("Image + Pred Mask", fontsize=12, color="blue")
+        axes[panel_idx].axis("off")
+
+    # 제목
     if title:
         fig.suptitle(title, fontsize=14)
 
-    plt.subplots_adjust(wspace=0.1, hspace=0.3)
+    # 점수 표시
+    if pred_score is not None:
+        label_text = "Anomaly" if (pred_label == 1 if pred_label is not None else pred_score > 0.5) else "Normal"
+        fig.text(0.5, 0.02, f"Score: {float(pred_score):.4f} | Prediction: {label_text}",
+                 ha="center", fontsize=11, color="green")
+
     plt.tight_layout()
     if show:
         plt.show()
     return fig
 
 
-def anomaly_compare_categories(
-    result_dir: str | Path,
-    categories: list | None = None,
-    n_per_category: int = 2,
-    figsize_per_image: tuple = (5, 1.5),
-    title: str | None = None,
+def visualize_predictions_from_runner(
+    runner,
+    n_samples_per_category: int = 1,
+    filter_by: str = "all",
+    random_sample: bool = True,
+    categories: list = None,
+    show_inference_time: bool = True,
+    figsize: tuple = (16, 4),
     show: bool = True,
-) -> plt.Figure:
+) -> dict:
     """
-    카테고리별로 Anomalib 결과 이미지 비교 시각화
+    학습된 모델로 각 카테고리별 예측 및 시각화 (선택된 샘플만 inference)
 
     Args:
-        result_dir: Anomalib 결과 이미지 폴더 경로
-        categories: 비교할 카테고리 리스트 (None이면 전체)
-        n_per_category: 카테고리당 표시할 이미지 수
-        figsize_per_image: 이미지당 크기
-        title: 전체 제목
-        show: True면 plt.show() 호출
+        runner: Anomalibs 인스턴스 (scripts/train_anomalib.py)
+        n_samples_per_category: 카테고리당 시각화할 샘플 수
+        filter_by: 필터링 옵션 ("all", "anomaly", "normal")
+        random_sample: True면 랜덤 샘플링, False면 순서대로
+        categories: 시각화할 카테고리 [("GoodsAD", "cigarette_box"), ...], None이면 전체
+        show_inference_time: inference 시간 표시 여부
+        figsize: 샘플당 figure 크기
+        show: plt.show() 호출 여부
 
     Returns:
-        matplotlib Figure 객체
+        dict: {(dataset, category): {"inference_time_ms": float, ...}}
 
     Example:
-        >>> from src.visual.plot import anomaly_compare_categories
-        >>> anomaly_compare_categories("results/.../images", categories=['good', 'broken_large'])
+        >>> runner = Anomalibs()
+        >>> # Defect 샘플만 랜덤으로 카테고리당 2개씩
+        >>> results = visualize_predictions_from_runner(runner, n_samples_per_category=2, filter_by="anomaly")
     """
-    result_dir = Path(result_dir)
+    import time
+    import random
+    from torch.utils.data import DataLoader, Subset
+    from src.datasets.dataloader import collate_items
 
-    # 카테고리 폴더 찾기
-    if categories is None:
-        categories = [d.name for d in result_dir.iterdir() if d.is_dir()]
+    results = {}
 
-    n_rows = len(categories)
-    n_cols = n_per_category
-    figsize = (figsize_per_image[0] * n_cols, figsize_per_image[1] * n_rows)
+    # 카테고리 목록
+    target_categories = categories if categories else runner.get_trained_categories()
 
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
-    if n_rows == 1:
-        axes = axes.reshape(1, -1)
-    if n_cols == 1:
-        axes = axes.reshape(-1, 1)
+    if not target_categories:
+        print("No trained categories found.")
+        return results
 
-    for row, cat in enumerate(categories):
-        cat_dir = result_dir / cat
-        if not cat_dir.exists():
+    print(f"Categories: {len(target_categories)} | Filter: {filter_by} | Samples: {n_samples_per_category}\n")
+
+    for dataset, category in target_categories:
+        print(f"{dataset} / {category}")
+
+        # 1. DataModule 로드
+        dm_kwargs = runner.get_datamodule_kwargs()
+        datamodule = runner.loader.get_datamodule(dataset, category, **dm_kwargs)
+        datamodule.setup(stage="predict")
+        test_dataset = datamodule.test_data
+
+        # 2. filter_by로 인덱스 필터링
+        if filter_by == "anomaly":
+            indices = [i for i in range(len(test_dataset)) if test_dataset.samples.iloc[i].label_index == 1]
+        elif filter_by == "normal":
+            indices = [i for i in range(len(test_dataset)) if test_dataset.samples.iloc[i].label_index == 0]
+        else:
+            indices = list(range(len(test_dataset)))
+
+        if not indices:
+            print(f"  No {filter_by} samples. Skipping.\n")
             continue
 
-        images = sorted(cat_dir.glob("*.png"))[:n_per_category]
+        # 3. 랜덤 샘플링
+        n_select = min(n_samples_per_category, len(indices))
+        if random_sample:
+            selected_indices = random.sample(indices, n_select)
+        else:
+            selected_indices = indices[:n_select]
 
-        for col, img_path in enumerate(images):
-            ax = axes[row, col]
-            img = Image.open(img_path)
-            ax.imshow(img)
-            if col == 0:
-                ax.set_ylabel(cat, fontsize=10, rotation=0, ha='right', va='center')
-            ax.set_title(img_path.name, fontsize=8)
-            ax.axis("off")
+        print(f"  {filter_by}: {len(indices)} images → Selected: {n_select}")
 
-        # 빈 칸 숨기기
-        for col in range(len(images), n_cols):
-            axes[row, col].axis("off")
+        # 4. Subset DataLoader 생성
+        subset = Subset(test_dataset, selected_indices)
+        subset_loader = DataLoader(subset, batch_size=n_select, shuffle=False, num_workers=0, collate_fn=collate_items)
 
-    if title:
-        fig.suptitle(title, fontsize=14)
+        # 5. 모델 로드
+        model = runner.get_model()
+        ckpt_path = runner.get_ckpt_path(dataset, category)
 
-    plt.tight_layout()
-    if show:
-        plt.show()
-    return fig
+        if ckpt_path:
+            checkpoint = torch.load(ckpt_path, map_location=runner.device, weights_only=False)
+            model.load_state_dict(checkpoint["state_dict"], strict=False)
+
+        model.eval()
+        model.to(runner.device)
+
+        # 6. 선택된 샘플만 inference
+        for batch in subset_loader:
+            images = batch.image.to(runner.device)
+
+            start_time = time.time()
+            with torch.no_grad():
+                outputs = model(images)
+            inference_time = time.time() - start_time
+
+            # InferenceBatch는 객체이므로 attribute로 접근
+            anomaly_maps = getattr(outputs, "anomaly_map", None)
+            pred_scores = getattr(outputs, "pred_score", None)
+
+            avg_time_ms = (inference_time / n_select) * 1000
+            if show_inference_time:
+                print(f"  Inference: {avg_time_ms:.1f}ms/image")
+
+            results[(dataset, category)] = {
+                "n_samples": n_select,
+                "avg_inference_time_ms": avg_time_ms,
+            }
+
+            # 7. 시각화
+            for i in range(len(batch.image_path)):
+                gt_label_str = "Anomaly" if batch.gt_label[i] == 1 else "Normal"
+                anomaly_map = anomaly_maps[i] if anomaly_maps is not None else None
+                pred_score = float(pred_scores[i]) if pred_scores is not None else None
+                pred_mask = (anomaly_map > 0.5).float() if anomaly_map is not None else None
+
+                visualize_anomaly_prediction(
+                    image_path=batch.image_path[i],
+                    anomaly_map=anomaly_map,
+                    pred_mask=pred_mask,
+                    gt_mask=batch.gt_mask[i] if batch.gt_mask is not None else None,
+                    pred_score=pred_score,
+                    figsize=figsize,
+                    title=f"{dataset} / {category} [GT: {gt_label_str}]",
+                    show=show,
+                )
+
+        del model
+        runner.cleanup_memory()
+        print()
+
+    return results
+
+
+def visualize_single_prediction(
+    model_name: str = "patchcore",
+    dataset: str = None,
+    category: str = None,
+    sample_idx: int = 0,
+    config_path: str = "configs/runtime.yaml",
+    figsize: tuple = (16, 4),
+    show: bool = True,
+):
+    """
+    단일 카테고리의 특정 샘플 시각화 (간편 함수)
+
+    Args:
+        model_name: 모델 이름 (patchcore, efficientad, winclip)
+        dataset: 데이터셋 이름 (None이면 첫 번째 학습된 카테고리 사용)
+        category: 카테고리 이름
+        sample_idx: 시각화할 샘플 인덱스
+        config_path: 설정 파일 경로
+        figsize: figure 크기
+        show: plt.show() 호출 여부
+
+    Example:
+        >>> from src.visual.plot import visualize_single_prediction
+        >>> visualize_single_prediction("patchcore", "GoodsAD", "cigarette_box", sample_idx=5)
+    """
+    import time
+    # train_anomalib.py에서 Anomalibs 클래스 임포트
+    import sys
+    from pathlib import Path as P
+    scripts_path = P(__file__).parent.parent.parent / "scripts"
+    if str(scripts_path) not in sys.path:
+        sys.path.insert(0, str(scripts_path))
+
+    from train_anomalib import Anomalibs
+
+    # config 수정하여 모델 지정
+    from src.utils.loaders import load_config
+    config = load_config(config_path)
+    config["anomaly"]["model"] = model_name
+
+    runner = Anomalibs.__new__(Anomalibs)
+    runner.config = config
+    runner.model_name = model_name
+    runner.model_params = Anomalibs.filter_none(config["anomaly"].get(model_name, {}))
+    runner.training_config = Anomalibs.filter_none(config.get("training", {}))
+    runner.data_root = P(config["data"]["root"])
+    runner.output_root = P(config["data"]["output_root"])
+    runner.output_config = config.get("output", {})
+    runner.engine_config = config.get("engine", {})
+
+    from src.utils.device import get_device
+    from src.datasets.dataloader import MMADLoader
+    runner.device = get_device()
+    runner.loader = MMADLoader(config=config, model_name=model_name)
+
+    # 데이터셋/카테고리 지정 안됐으면 첫 번째 학습된 것 사용
+    trained = runner.get_trained_categories()
+    if not trained:
+        print(f"No trained categories found for {model_name}")
+        return
+
+    if dataset is None or category is None:
+        dataset, category = trained[0]
+        print(f"Using first trained category: {dataset}/{category}")
+
+    # Predict
+    start_time = time.time()
+    predictions = runner.predict(dataset, category, save_json=False)
+    inference_time = time.time() - start_time
+
+    n_images = sum(len(batch.image_path) for batch in predictions)
+    print(f"Inference Time: {inference_time:.2f}s ({n_images} images)")
+
+    # 특정 샘플 찾기
+    current_idx = 0
+    target_batch = None
+    target_i = None
+
+    for batch in predictions:
+        batch_size = len(batch.image_path)
+        if current_idx + batch_size > sample_idx:
+            target_batch = batch
+            target_i = sample_idx - current_idx
+            break
+        current_idx += batch_size
+
+    if target_batch is None:
+        print(f"Sample index {sample_idx} out of range (total: {n_images})")
+        return
+
+    # 시각화
+    visualize_anomaly_prediction(
+        image_path=target_batch.image_path[target_i],
+        anomaly_map=target_batch.anomaly_map[target_i] if target_batch.anomaly_map is not None else None,
+        pred_mask=target_batch.pred_mask[target_i] if target_batch.pred_mask is not None else None,
+        gt_mask=target_batch.gt_mask[target_i] if target_batch.gt_mask is not None else None,
+        pred_score=float(target_batch.pred_score[target_i]) if target_batch.pred_score is not None else None,
+        pred_label=int(target_batch.pred_label[target_i]) if target_batch.pred_label is not None else None,
+        figsize=figsize,
+        title=f"{dataset} / {category} (sample #{sample_idx})",
+        show=show,
+    )
+
+
+
