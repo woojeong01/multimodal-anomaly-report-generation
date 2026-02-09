@@ -1,5 +1,9 @@
 """
-MMAD Evaluation Metrics - matches paper's helper/summary.py implementation.
+Evaluation Metrics for Anomaly Detection.
+
+1. MMAD Evaluation: calculate_accuracy_mmad()
+2. Anomaly Detection Metrics: compute_anomaly_metrics()
+3. Threshold Optimization: find_optimal_threshold()
 """
 from __future__ import annotations
 
@@ -8,7 +12,216 @@ import os
 from pathlib import Path
 from typing import Dict, Optional
 
+import numpy as np
 import pandas as pd
+import torch
+from sklearn.metrics import (
+    roc_auc_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    jaccard_score,
+    precision_recall_curve,
+)
+from scipy.ndimage import label as connected_components
+
+
+# ============================================================
+# Anomaly Detection Metrics
+# ============================================================
+
+def find_optimal_threshold(
+    predictions: dict,
+    level: str = "image",
+    num_thresholds: int = 200,
+) -> dict:
+    """카테고리별 F1 최대화 기반 optimal threshold 탐색.
+
+    Args:
+        predictions: {category: [batch, ...]} 형태의 예측 결과
+        level: "image" (이미지 단위) 또는 "pixel" (픽셀 단위)
+        num_thresholds: threshold 탐색 개수
+
+    Returns:
+        {category: {"threshold": float, "f1": float}} 딕셔너리
+    """
+    thresholds = {}
+
+    for category, batches in predictions.items():
+        if level == "image":
+            y_true = np.concatenate([b.gt_label.cpu().numpy() for b in batches])
+            y_score = np.concatenate([b.pred_score.cpu().numpy() for b in batches])
+        elif level == "pixel":
+            gt_masks = torch.cat([b.gt_mask for b in batches])
+            anomaly_maps = torch.cat([b.anomaly_map for b in batches])
+            y_true = gt_masks.flatten().cpu().numpy().astype(int)
+            y_score = anomaly_maps.flatten().cpu().numpy().astype(float)
+        else:
+            raise ValueError(f"Unknown level: {level}. Use 'image' or 'pixel'.")
+
+        if len(np.unique(y_true)) < 2:
+            thresholds[category] = {"threshold": 0.5, "f1": 0.0}
+            continue
+
+        precision_arr, recall_arr, thresh_arr = precision_recall_curve(y_true, y_score)
+        # precision_recall_curve returns n+1 precision/recall but n thresholds
+        f1_arr = 2 * (precision_arr[:-1] * recall_arr[:-1]) / (precision_arr[:-1] + recall_arr[:-1] + 1e-10)
+        best_idx = np.argmax(f1_arr)
+
+        thresholds[category] = {
+            "threshold": float(thresh_arr[best_idx]),
+            "f1": float(f1_arr[best_idx]),
+        }
+
+    return thresholds
+
+
+def compute_pro(gt_masks_np, anomaly_maps_np, num_thresholds=200):
+    """Per-Region Overlap (PRO) 계산.
+
+    각 GT connected component별로 overlap을 계산하고,
+    FPR에 대해 적분하여 정규화한 값을 반환.
+
+    Args:
+        gt_masks_np: (N, H, W) numpy array, 0/1 GT 마스크
+        anomaly_maps_np: (N, H, W) numpy array, anomaly score map
+        num_thresholds: threshold 개수
+
+    Returns:
+        PRO score (float)
+    """
+    thresholds = np.linspace(anomaly_maps_np.max(), anomaly_maps_np.min(), num_thresholds)
+
+    pro_values = []
+    fpr_values = []
+
+    for thresh in thresholds:
+        pred_binary = (anomaly_maps_np >= thresh).astype(int)
+
+        gt_neg = (gt_masks_np == 0)
+        fp = np.sum(pred_binary[gt_neg])
+        fpr = fp / max(np.sum(gt_neg), 1)
+
+        region_overlaps = []
+        for i in range(len(gt_masks_np)):
+            labeled, num_regions = connected_components(gt_masks_np[i])
+            for region_id in range(1, num_regions + 1):
+                region_mask = (labeled == region_id)
+                region_size = np.sum(region_mask)
+                if region_size == 0:
+                    continue
+                overlap = np.sum(pred_binary[i][region_mask]) / region_size
+                region_overlaps.append(overlap)
+
+        if region_overlaps:
+            pro_values.append(np.mean(region_overlaps))
+            fpr_values.append(fpr)
+
+    if len(pro_values) < 2:
+        return 0.0
+
+    fpr_limit = 0.3
+    filtered = [(f, p) for f, p in zip(fpr_values, pro_values) if f <= fpr_limit]
+    if len(filtered) < 2:
+        return 0.0
+
+    fpr_filtered, pro_filtered = zip(*sorted(filtered))
+    pro_auc = np.trapz(pro_filtered, fpr_filtered) / fpr_limit
+    return pro_auc
+
+
+def compute_anomaly_metrics(
+    predictions: dict,
+    image_thresholds: dict = None,
+    pixel_thresholds: dict = None,
+    pro_num_thresholds: int = 200,
+) -> pd.DataFrame:
+    """Anomaly detection 전체 지표 산출.
+
+    Args:
+        predictions: {category: [batch, ...]} 형태의 예측 결과
+        image_thresholds: {category: {"threshold": float}} image-level threshold.
+                          None이면 0.5 사용.
+        pixel_thresholds: {category: {"threshold": float}} pixel-level threshold.
+                          None이면 0.5 사용.
+        pro_num_thresholds: PRO 계산 시 threshold 개수
+
+    Returns:
+        카테고리별 지표 DataFrame
+    """
+    results = []
+
+    for category, batches in predictions.items():
+        y_true = np.concatenate([b.gt_label.cpu().numpy() for b in batches])
+        y_score = np.concatenate([b.pred_score.cpu().numpy() for b in batches])
+
+        # Image-level threshold
+        img_thresh = 0.5
+        if image_thresholds and category in image_thresholds:
+            img_thresh = image_thresholds[category]["threshold"]
+
+        y_pred = (y_score >= img_thresh).astype(int)
+
+        metrics = {
+            "Category": category,
+            "Image_AUROC": round(roc_auc_score(y_true, y_score), 4),
+            "Precision": round(precision_score(y_true, y_pred, zero_division=0), 4),
+            "Recall": round(recall_score(y_true, y_pred, zero_division=0), 4),
+            "F1": round(f1_score(y_true, y_pred, zero_division=0), 4),
+            "Image_Threshold": round(img_thresh, 4),
+            "N_samples": len(y_true),
+        }
+
+        # Pixel-level
+        if batches[0].gt_mask is not None:
+            gt_masks = torch.cat([b.gt_mask for b in batches])
+            anomaly_maps = torch.cat([b.anomaly_map for b in batches])
+
+            gt_masks_np = gt_masks.cpu().numpy().astype(int)
+            anomaly_maps_np = anomaly_maps.cpu().numpy().astype(float)
+
+            # Pixel AUROC
+            gt_flat = gt_masks_np.flatten()
+            pred_flat = anomaly_maps_np.flatten()
+            if len(np.unique(gt_flat)) > 1:
+                metrics["Pixel_AUROC"] = round(roc_auc_score(gt_flat, pred_flat), 4)
+            else:
+                metrics["Pixel_AUROC"] = float("nan")
+
+            # PRO
+            gt_for_pro = gt_masks_np.squeeze(1) if gt_masks_np.ndim == 4 else gt_masks_np
+            amap_for_pro = anomaly_maps_np.squeeze(1) if anomaly_maps_np.ndim == 4 else anomaly_maps_np
+            metrics["PRO"] = round(compute_pro(gt_for_pro, amap_for_pro, pro_num_thresholds), 4)
+
+            # Pixel-level threshold
+            px_thresh = 0.5
+            if pixel_thresholds and category in pixel_thresholds:
+                px_thresh = pixel_thresholds[category]["threshold"]
+
+            pred_binary = (anomaly_maps > px_thresh).int()
+            metrics["Dice"] = round(
+                f1_score(gt_flat, pred_binary.flatten().cpu().numpy(), zero_division=0), 4
+            )
+            metrics["IoU"] = round(
+                jaccard_score(gt_flat, pred_binary.flatten().cpu().numpy(), average="binary", zero_division=0), 4
+            )
+            metrics["Pixel_Threshold"] = round(px_thresh, 4)
+
+        results.append(metrics)
+
+    metrics_df = pd.DataFrame(results).set_index("Category")
+    avg_row = metrics_df.drop(columns=["N_samples"], errors="ignore").mean().round(4)
+    avg_row["N_samples"] = metrics_df["N_samples"].sum()
+    metrics_df.loc["Average"] = avg_row
+    col_order = [c for c in metrics_df.columns if c != "N_samples"] + ["N_samples"]
+    metrics_df = metrics_df[col_order]
+
+    return metrics_df
+
+
+# ============================================================
+# MMAD Evaluation Metrics
+# ============================================================
 
 
 def normalize_dataset_name(dataset_name: str) -> str:

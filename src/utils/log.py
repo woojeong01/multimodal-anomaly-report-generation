@@ -12,6 +12,7 @@ def setup_logger(
     log_level: str = "INFO",
     log_prefix: Optional[str] = None,
     file_logging: bool = True,
+    console_logging: bool = True,
 ) -> logging.Logger:
     """
     Args:
@@ -20,6 +21,7 @@ def setup_logger(
         log_level: 로그 레벨
         log_prefix: 로그 파일 prefix (None이면 파일 로깅 비활성화)
         file_logging: 파일 로깅 활성화 여부
+        console_logging: 콘솔 출력 활성화 여부
     """
     # 로거 설정
     logger = logging.getLogger(name)
@@ -52,11 +54,12 @@ def setup_logger(
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
 
-    # 콘솔 핸들러 (항상 추가)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(getattr(logging, log_level.upper()))
-    console_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(console_formatter)
-    logger.addHandler(console_handler)
+    # 콘솔 핸들러
+    if console_logging:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(getattr(logging, log_level.upper()))
+        console_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(console_formatter)
+        logger.addHandler(console_handler)
 
     return logger

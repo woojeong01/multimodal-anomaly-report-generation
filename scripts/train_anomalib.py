@@ -31,7 +31,27 @@ from src.utils.loaders import load_config
 from src.utils.log import setup_logger
 from src.utils.device import get_device
 from src.datasets.dataloader import MMADLoader
-logger = setup_logger(name="TrainAnomalib", log_prefix="train_anomalib")
+
+# PyTorch Lightning 내부 로그 억제 (GPU available, TPU available, Restoring states 등)
+import logging as _logging
+_logging.getLogger("pytorch_lightning").setLevel(_logging.WARNING)
+_logging.getLogger("lightning.pytorch").setLevel(_logging.WARNING)
+
+# Lazy Logger: 필요할 때만 생성
+_train_logger = None
+_inference_logger = None
+
+def get_train_logger():
+    global _train_logger
+    if _train_logger is None:
+        _train_logger = setup_logger(name="TrainAnomalib", log_prefix="train_anomalib", console_logging=False)
+    return _train_logger
+
+def get_inference_logger():
+    global _inference_logger
+    if _inference_logger is None:
+        _inference_logger = setup_logger(name="InferenceAnomalib", log_prefix="inference_anomalib", console_logging=False)
+    return _inference_logger
 
 class EpochProgressCallback(Callback):
     def on_train_epoch_end(self, trainer, pl_module):
@@ -90,7 +110,7 @@ class EarlyStoppingTracker(Callback):
         if was_early_stopped:
             print(f"\n⚡ Early Stopping triggered at epoch {stopped_epoch}")
             print(f"   Best {self.config.get('monitor', 'metric')}: {best_score:.4f}")
-            logger.info(f"Early Stopping at epoch {stopped_epoch}, best score: {best_score:.4f}")
+            get_train_logger().info(f"Early Stopping at epoch {stopped_epoch}, best score: {best_score:.4f}")
 
         # wandb에 기록 (2가지만)
         if wandb.run is not None:
@@ -111,10 +131,12 @@ class Anomalibs:
         self.data_root = Path(self.config["data"]["root"])
         self.output_root = Path(self.config["data"]["output_root"])
         self.output_config = self.config.get("output", {})
+        self.predict_config = self.config.get("predict", {})
         self.engine_config = self.config.get("engine", {})
         self.device = get_device()
+        self.accelerator = self.engine_config.get("accelerator", "auto")
         self.loader = MMADLoader(config=self.config, model_name=self.model_name)
-        logger.info(f"Initialized - model: {self.model_name}, device: {self.device}")
+        print(f"[{self.model_name}] device: {self.device}, accelerator: {self.accelerator}")
 
     @staticmethod
     def cleanup_memory():
@@ -221,6 +243,12 @@ class Anomalibs:
                 # Early Stopping 설정 추출
                 es_config = self.training_config.get("early_stopping", {})
 
+                # 모델별 하이퍼파라미터 (yaml null이면 Anomalib default 사용)
+                model_hparams = {}
+                raw_model_params = self.config["anomaly"].get(self.model_name, {})
+                if self.model_name == "patchcore":
+                    model_hparams["coreset_sampling_ratio"] = raw_model_params.get("coreset_sampling_ratio") or 0.1
+
                 logger_config = WandbLogger(
                     project=wandb_config.get("project", "mmad-anomaly"),
                     name=run_name,
@@ -237,6 +265,7 @@ class Anomalibs:
                         "lr": lr,
                         "weight_decay": weight_decay,
                         "early_stopping_patience": es_config.get("patience", 10) if es_config.get("enabled") else None,
+                        **model_hparams,
                     },
                 )
 
@@ -334,12 +363,12 @@ class Anomalibs:
 
             # Early Stopping 추적 콜백 추가 (wandb 로깅용)
             callbacks.append(EarlyStoppingTracker(early_stop_config))
-            logger.info(
+            get_train_logger().info(
                 f"Early Stopping enabled: monitor={es_monitor}, "
                 f"patience={early_stop_config.get('patience')}, mode={es_mode}"
             )
-        elif early_stop_config.get("enabled", False) and self.model_name not in models_need_early_stopping:
-            logger.info(f"Early Stopping skipped: {self.model_name} doesn't need iterative training")
+        elif early_stop_config.get("enabled", False) and self.model_name not in models_need_early_stopping and stage != "predict":
+            get_train_logger().info(f"Early Stopping skipped: {self.model_name} doesn't need iterative training")
 
         kwargs = {
             "accelerator": self.engine_config.get("accelerator", "auto"),
@@ -400,11 +429,10 @@ class Anomalibs:
         latest = self.get_latest_version(dataset, category)
 
         if create_new:
-            # 새 학습: 다음 버전 생성
+            # 새 학습: 다음 버전 경로 계산 (디렉토리 생성은 Anomalib Engine이 담당)
             new_version = 0 if latest is None else latest + 1
             version_dir = category_dir / f"v{new_version}"
-            version_dir.mkdir(parents=True, exist_ok=True)
-            logger.info(f"Created new version directory: {version_dir}")
+            get_train_logger().info(f"New version directory: {version_dir}")
             return version_dir
         else:
             # Resume: 최신 버전 사용
@@ -417,27 +445,78 @@ class Anomalibs:
                 return version_dir
 
     def get_ckpt_path(self, dataset: str, category: str) -> Path | None:
-        """최신 버전의 체크포인트 경로 반환."""
+        """체크포인트 경로 반환.
+
+        predict.version 설정에 따라 버전 선택:
+        - null: 최신 버전 자동 선택
+        - 0, 1, 2...: 특정 버전 지정
+
+        model-v2.ckpt > model-v1.ckpt > model.ckpt 순으로 최신 선택
+        """
         if self.model_name == "winclip":
             return None
 
-        latest = self.get_latest_version(dataset, category)
-        if latest is None:
+        target_version = self.predict_config.get("version", None)
+
+        if target_version is not None:
+            # 특정 버전 지정
+            version_dir = self.get_category_dir(dataset, category) / f"v{target_version}"
+            if not version_dir.exists():
+                get_train_logger().warning(
+                    f"Specified version v{target_version} not found for {dataset}/{category}. "
+                    f"Falling back to latest version."
+                )
+                target_version = None
+
+        if target_version is None:
+            latest = self.get_latest_version(dataset, category)
+            if latest is None:
+                return None
+            version_dir = self.get_category_dir(dataset, category) / f"v{latest}"
+        if not version_dir.exists():
             return None
 
-        category_dir = self.get_category_dir(dataset, category)
-        ckpt_path = category_dir / f"v{latest}" / "model.ckpt"
-        return ckpt_path if ckpt_path.exists() else None
+        # model-v{n}.ckpt 또는 model.pt 파일들 찾기
+        model_ckpts = list(version_dir.glob("model*.ckpt")) + list(version_dir.glob("model*.pt"))
+        if not model_ckpts:
+            return None
+
+        # last.ckpt 제외하고, model로 시작하는 것만
+        model_ckpts = [p for p in model_ckpts if p.name.startswith("model")]
+
+        if not model_ckpts:
+            return None
+
+        # .ckpt 우선, .pt는 fallback
+        ckpt_files = [p for p in model_ckpts if p.suffix == ".ckpt"]
+        pt_files = [p for p in model_ckpts if p.suffix == ".pt"]
+        if ckpt_files:
+            model_ckpts = ckpt_files
+        elif pt_files:
+            return pt_files[0]  # .pt는 버전 관리 없이 단일 파일
+
+        # 버전 번호로 정렬 (model.ckpt=0, model-v1.ckpt=1, model-v2.ckpt=2)
+        def get_version(path):
+            name = path.stem  # model, model-v1, model-v2
+            if name == "model":
+                return 0
+            elif "-v" in name:
+                try:
+                    return int(name.split("-v")[1])
+                except ValueError:
+                    return 0
+            return 0
+
+        best_ckpt = max(model_ckpts, key=get_version)
+        return best_ckpt
 
     def requires_fit(self) -> bool:
         return self.model_name != "winclip"
 
     def fit(self, dataset: str, category: str):
         if not self.requires_fit():
-            logger.info(f"{self.model_name} - no training required (zero-shot)")
+            get_train_logger().info(f"{self.model_name} - no training required (zero-shot)")
             return self
-
-        logger.info(f"Fitting {self.model_name} - {dataset}/{category}")
 
         # --- Resume/Version 관리 ---
         resume_training = self.training_config.get("resume", False)
@@ -451,13 +530,13 @@ class Anomalibs:
             if potential_ckpt_path and potential_ckpt_path.exists():
                 ckpt_path_to_use = str(potential_ckpt_path)
                 is_resume = True
-                logger.info(f"Resuming from: {ckpt_path_to_use}")
+                get_train_logger().info(f"Resuming from: {ckpt_path_to_use}")
             else:
-                logger.info(f"Resume enabled but no checkpoint found. Training in: {version_dir}")
+                get_train_logger().info(f"Resume enabled but no checkpoint found. Training in: {version_dir}")
         else:
             # New training: 새 버전 폴더 생성
             version_dir = self.get_version_dir(dataset, category, create_new=True)
-            logger.info(f"New training in: {version_dir}")
+            get_train_logger().info(f"New training in: {version_dir}")
 
         model = self.get_model()
         dm_kwargs = self.get_datamodule_kwargs()
@@ -477,28 +556,30 @@ class Anomalibs:
         del datamodule
         self.cleanup_memory()
 
-        logger.info(f"Fitting {dataset}/{category} done")
         return self
 
     def predict(self, dataset: str, category: str, save_json: bool = None):
-        logger.info(f"Predicting {self.model_name} - {dataset}/{category}")
-
         model = self.get_model()
         dm_kwargs = self.get_datamodule_kwargs()
         dm_kwargs["include_mask"] = True  # predict 시 GT mask 포함
         datamodule = self.loader.get_datamodule(dataset, category, **dm_kwargs)
-        engine = self.get_engine(dataset, category, model=model, datamodule=datamodule, stage="predict")
         ckpt_path = self.get_ckpt_path(dataset, category)
 
-        # WinCLIP requires class name for text embeddings
-        if self.model_name == "winclip":
-            model.setup(class_name=category)
+        # .pt 파일 (커스텀 torch.save 모델) 처리
+        if ckpt_path is not None and ckpt_path.suffix == ".pt":
+            predictions = self.predict_from_pt(model, datamodule, ckpt_path)
+        else:
+            engine = self.get_engine(dataset, category, model=model, datamodule=datamodule, stage="predict")
 
-        predictions = engine.predict(
-            datamodule=datamodule,
-            model=model,
-            ckpt_path=ckpt_path,
-        )
+            # WinCLIP requires class name for text embeddings
+            if self.model_name == "winclip":
+                model.setup(class_name=category)
+
+            predictions = engine.predict(
+                datamodule=datamodule,
+                model=model,
+                ckpt_path=ckpt_path,
+            )
 
         # save json
         if save_json is None:
@@ -506,8 +587,57 @@ class Anomalibs:
         if save_json:
             self.save_predictions_json(predictions, dataset, category)
 
-        logger.info(f"Predicting {dataset}/{category} done - {len(predictions)} batches")
         return predictions
+
+    def predict_from_pt(self, model, datamodule, pt_path: Path):
+        """커스텀 torch.save() .pt 파일로부터 PatchCore predict 수행."""
+        from anomalib.data.dataclasses import ImageBatch
+        from torch.nn.functional import interpolate
+
+        get_inference_logger().info(f"Loading custom .pt model: {pt_path}")
+        pt_data = torch.load(pt_path, map_location=self.device, weights_only=False)
+
+        # PatchCore 모델에 memory bank 주입
+        memory_bank = pt_data["memory_bank"].to(self.device)
+        model.model.memory_bank = memory_bank
+        model.model.coreset_sampling_ratio = pt_data.get("coreset_ratio", 0.1)
+        model.model.num_neighbors = pt_data.get("n_neighbors", 9)
+
+        model.eval()
+        model.to(self.device)
+
+        datamodule.setup(stage="predict")
+        predict_loader = datamodule.predict_dataloader()
+
+        all_predictions = []
+        with torch.no_grad():
+            for batch in predict_loader:
+                images = batch.image.to(self.device)
+                outputs = model(images)
+
+                anomaly_map = getattr(outputs, "anomaly_map", None)
+                pred_score = getattr(outputs, "pred_score", None)
+
+                # anomaly_map 크기를 이미지 크기에 맞춤
+                if anomaly_map is not None and anomaly_map.shape[-2:] != images.shape[-2:]:
+                    anomaly_map = interpolate(anomaly_map, size=images.shape[-2:], mode="bilinear", align_corners=False)
+
+                pred_label = (pred_score > 0.5).int() if pred_score is not None else None
+                pred_mask = (anomaly_map > 0.5).int() if anomaly_map is not None else None
+
+                result = ImageBatch(
+                    image=images.cpu(),
+                    image_path=batch.image_path,
+                    gt_label=batch.gt_label if batch.gt_label is not None else None,
+                    gt_mask=batch.gt_mask if batch.gt_mask is not None else None,
+                    anomaly_map=anomaly_map.cpu() if anomaly_map is not None else None,
+                    pred_score=pred_score.cpu() if pred_score is not None else None,
+                    pred_label=pred_label.cpu() if pred_label is not None else None,
+                    pred_mask=pred_mask.cpu() if pred_mask is not None else None,
+                )
+                all_predictions.append(result)
+
+        return all_predictions
 
     def get_mask_path(self, image_path: str, dataset: str) -> str | None:
         """이미지 경로에서 대응하는 마스크 경로 추론"""
@@ -534,7 +664,14 @@ class Anomalibs:
         return None
 
     def save_predictions_json(self, predictions, dataset: str, category: str):
-        output_dir = self.output_root / "predictions" / self.model_name / dataset / category
+        target_version = self.predict_config.get("version", None)
+        if target_version is not None:
+            version_tag = f"v{target_version}"
+        else:
+            latest = self.get_latest_version(dataset, category)
+            version_tag = f"v{latest}" if latest is not None else "v0"
+
+        output_dir = self.output_root / "predictions" / self.model_name / dataset / category / version_tag
         output_dir.mkdir(parents=True, exist_ok=True)
 
         results = []
@@ -570,38 +707,65 @@ class Anomalibs:
         json_path = output_dir / "predictions.json"
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
-        logger.info(f"Saved predictions JSON: {json_path}")
+        get_inference_logger().info(f"Saved predictions JSON: {json_path}")
 
     def get_all_categories(self) -> list[tuple[str, str]]:
-        """Get list of (dataset, category) tuples from DATASETS."""
-        return [
+        """Get list of (dataset, category) tuples from DATASETS.
+
+        data.categories가 설정되어 있으면 해당 카테고리만 반환.
+        """
+        config_categories = self.config.get("data", {}).get("categories", None)
+        all_cats = [
             (dataset, category)
             for dataset in self.loader.datasets_to_run
             for category in self.loader.get_categories(dataset)
         ]
+        if config_categories:
+            all_cats = [(d, c) for d, c in all_cats if c in config_categories]
+        return all_cats
 
-    def get_trained_categories(self) -> list[tuple[str, str]]:
-        """Get list of (dataset, category) tuples that have trained checkpoints."""
+    def get_trained_categories(self, filter_by_config: bool = True) -> list[tuple[str, str]]:
+        """Get list of (dataset, category) tuples that have trained checkpoints.
+
+        Args:
+            filter_by_config: True면 YAML의 datasets 설정에 있는 것만 반환
+        """
         model_dir = self.MODEL_DIR_MAP.get(self.model_name, self.model_name.capitalize())
         model_path = self.output_root / model_dir
 
         if not model_path.exists():
             return []
 
+        # YAML에서 지정한 datasets
+        config_datasets = set(self.loader.datasets_to_run) if filter_by_config else None
+
+        # YAML에서 지정한 categories
+        config_categories = set(self.config.get("data", {}).get("categories", []) or [])
+
         trained = []
         for dataset_dir in sorted(model_path.iterdir()):
             if not dataset_dir.is_dir():
                 continue
             dataset = dataset_dir.name
+
+            # filter_by_config=True면 YAML에 있는 dataset만
+            if config_datasets and dataset not in config_datasets:
+                continue
+
             for category_dir in sorted(dataset_dir.iterdir()):
                 if not category_dir.is_dir():
                     continue
                 category = category_dir.name
-                # 모든 버전 폴더에서 체크포인트 찾기
+
+                # categories 필터링
+                if config_categories and category not in config_categories:
+                    continue
+
+                # 모든 버전 폴더에서 체크포인트 찾기 (.ckpt 또는 .pt)
                 has_checkpoint = False
                 for version_dir in category_dir.iterdir():
                     if version_dir.is_dir() and version_dir.name.startswith("v"):
-                        if (version_dir / "model.ckpt").exists():
+                        if (version_dir / "model.ckpt").exists() or (version_dir / "model.pt").exists():
                             has_checkpoint = True
                             break
                 if has_checkpoint:
@@ -611,38 +775,34 @@ class Anomalibs:
     def fit_all(self):
         categories = self.get_all_categories()
         total = len(categories)
-        logger.info(f"Starting fit_all: {total} categories")
+        get_train_logger().info(f"fit_all: {total} categories")
 
         for idx, (dataset, category) in enumerate(categories, 1):
-            msg_start = f"[{idx}/{total}] Training: {dataset}/{category}..."
-            print(f"\n{msg_start}")
-            logger.info(msg_start)
+            print(f"\n[{idx}/{total}] Training: {dataset}/{category}...")
             start = time.time()
             self.fit(dataset, category)
             elapsed = time.time() - start
-            msg_done = f"[{idx}/{total}] {dataset}/{category} done ({elapsed:.1f}s)"
-            print(f"✓ {msg_done}")
-            logger.info(msg_done)
+            msg = f"[{idx}/{total}] {dataset}/{category} done ({elapsed:.1f}s)"
+            print(f"✓ {msg}")
+            get_train_logger().info(msg)
 
-        logger.info(f"fit_all completed: {total} categories")
+        get_train_logger().info(f"fit_all completed: {total} categories")
 
     def predict_all(self, save_json: bool = None):
         categories = self.get_trained_categories()
         total = len(categories)
-        logger.info(f"Starting predict_all: {total} trained categories")
+        get_inference_logger().info(f"predict_all: {total} trained categories")
 
         all_predictions = {}
         for idx, (dataset, category) in enumerate(categories, 1):
-            msg_start = f"[{idx}/{total}] Inference: {dataset}/{category}..."
-            print(f"\n{msg_start}")
-            logger.info(msg_start)
+            print(f"\n[{idx}/{total}] Predicting: {dataset}/{category}...")
             start = time.time()
             key = f"{dataset}/{category}"
             all_predictions[key] = self.predict(dataset, category, save_json)
             elapsed = time.time() - start
-            msg_done = f"[{idx}/{total}] {dataset}/{category} done ({elapsed:.1f}s)"
-            print(f"✓ {msg_done}")
-            logger.info(msg_done)
+            msg = f"[{idx}/{total}] {dataset}/{category} done ({elapsed:.1f}s)"
+            print(f"✓ {msg}")
+            get_inference_logger().info(msg)
 
-        logger.info(f"predict_all completed: {total} categories")
+        get_inference_logger().info(f"predict_all completed: {total} categories")
         return all_predictions

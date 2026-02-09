@@ -1,0 +1,75 @@
+# null -> default
+
+# Data
+data:
+  # root: dataset/MMAD
+  root: /Users/mungughyeon/Documents/Bootcamp/Likelion/backup/datasets/MMAD
+  output_root: ./output
+  image_size: [224, 224] # PatchCore: [700, 700], Efficientad: [256, 256]
+  datasets: ["GoodsAD", "MVTec-LOCO"] # ["MVTec-AD", "VisA", "GoodsAD", "MVTec-LOCO"]
+  categories:  # null: 전체 카테고리 | 리스트: 특정 카테고리만
+    - breakfast_box
+    - juice_bottle
+    - pushpins
+    - screw_bag
+    - cigarette_box
+    - drink_bottle
+    - drink_can
+    - food_bottle
+    - food_box
+    - food_package
+
+# Anomaly Detection Model
+anomaly:
+  model: patchcore  # patchcore | winclip | efficientad
+
+  patchcore:
+    backbone: null
+    layers: null
+    coreset_sampling_ratio: null
+    visualizer: false  # true: inference 이미지 저장, false: 저장 안 함
+
+  winclip:
+    class_name: null
+    k_shot: null
+    scales: null
+
+  efficientad:
+    model_size: null
+    teacher_out_channels: null
+    visualizer: false
+    evaluator: true
+    imagenet_dir: imagenette/train
+
+# Predict
+predict:
+  version: 0  # null: 최신 버전 자동 선택 | 0, 1, 2...: 특정 버전 지정
+
+# Training
+training:
+  resume: false  # true: 추가 학습
+  train_batch_size: null
+  eval_batch_size: null
+  num_workers: 0
+  max_epochs: null   
+
+  # Early Stopping 설정 (EfficientAd만 적용, PatchCore/WinCLIP은 자동 스킵)
+  early_stopping:
+    enabled: true
+    patience: 10          # 개선 없이 허용되는 epoch 수
+    min_epochs: 10        # 최소 학습 epoch (이전에는 early stop 안 함)
+
+# Engine
+engine:
+  accelerator: cpu  # auto | cpu | gpu | mps 
+  enable_progress_bar: false
+  logger: wandb
+
+# WandB
+wandb:
+  project: "Anomaly_Detection"
+  run_name: coreset-0.1 # null -> "{dataset}_{category}", 값 지정 시 -> "{dataset}_{category}_{run_name}" 
+
+# Output
+output:
+  save_json: true
