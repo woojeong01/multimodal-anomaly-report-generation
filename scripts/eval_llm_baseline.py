@@ -70,6 +70,7 @@ MODEL_REGISTRY = {
     "qwen-7b": {"type": "local", "class": "QwenVLClient", "model": "Qwen/Qwen2.5-VL-7B-Instruct"},
     "qwen-2b": {"type": "local", "class": "QwenVLClient", "model": "Qwen/Qwen2.5-VL-2B-Instruct"},
     "qwen2-vl": {"type": "local", "class": "QwenVLClient", "model": "Qwen/Qwen2-VL-7B-Instruct"},
+    "qwen3-vl-8b": {"type": "local", "class": "QwenVLClient", "model": "Qwen/Qwen3-VL-8B-Instruct"},
 
     # InternVL models
     "internvl": {"type": "local", "class": "InternVLClient", "model": "OpenGVLab/InternVL2-8B"},
