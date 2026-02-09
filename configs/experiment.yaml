@@ -1,0 +1,18 @@
+# Experiment configuration
+# Change ad_model and llm, then run: python scripts/run_experiment.py
+
+ad_model: null          # patchcore | winclip | efficientad | null (no AD)
+llm: qwen               # qwen | llava | gpt-4o | claude | gemini | internvl | ...
+
+# Data paths (override with env vars or CLI args)
+data_root: /content/drive/Othercomputers/mynotebook/multimodal-anomaly-report-generation/dataset/MMAD
+mmad_json: ${MMAD_JSON:-dataset/MMAD/mmad_10classes.json}
+output_dir: outputs/eval
+
+eval:
+  few_shot: 1
+  similar_template: false
+  max_images: 5       # null = all images, set number for quick testing
+  max_image_size: [700, 700]  # LLM에 전달할 이미지 최대 크기 [width, height]
+  batch_mode: true
+  resume: false

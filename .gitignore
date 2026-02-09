@@ -6,6 +6,7 @@ weights/
 logs/
 wandb/
 dataset/
+datasets/
 results/
 output/
 

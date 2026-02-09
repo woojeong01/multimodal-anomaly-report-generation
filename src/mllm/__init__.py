@@ -1,11 +1,16 @@
 """MLLM clients for MMAD evaluation."""
 from .echo import EchoMLLM
 from .base import BaseLLMClient, INSTRUCTION
+from .factory import get_llm_client, MODEL_REGISTRY, list_llm_models
 
 __all__ = [
     "EchoMLLM",
     "BaseLLMClient",
     "INSTRUCTION",
+    # Factory
+    "get_llm_client",
+    "MODEL_REGISTRY",
+    "list_llm_models",
     # Lazy-loaded clients
     "get_gpt4_client",
     "get_claude_client",
