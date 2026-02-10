@@ -1,8 +1,8 @@
 """Export PatchCore checkpoints to ONNX format.
 
 Usage:
-    # Export all trained models
-    python scripts/export_patchcore.py --checkpoint-dir output --output-dir models/onnx
+    # Export categories from config (recommended)
+    python scripts/export_patchcore.py --checkpoint-dir output --output-dir models/onnx --config configs/anomaly.yaml
 
     # Export specific category
     python scripts/export_patchcore.py --checkpoint-dir output --output-dir models/onnx \
@@ -218,6 +218,12 @@ def main():
         help="Directory to save ONNX models",
     )
     parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Config file with datasets and categories to export",
+    )
+    parser.add_argument(
         "--dataset",
         type=str,
         default=None,
@@ -262,6 +268,19 @@ def main():
         print(f"Error: Checkpoint directory not found: {checkpoint_dir}")
         sys.exit(1)
 
+    # Load config if provided
+    config_datasets = None
+    config_categories = None
+    if args.config:
+        from src.utils.loaders import load_config
+        config = load_config(args.config)
+        config_datasets = config.get("data", {}).get("datasets", None)
+        config_categories = config.get("data", {}).get("categories", None)
+        print(f"Using config: {args.config}")
+        print(f"  Datasets: {config_datasets}")
+        print(f"  Categories: {config_categories}")
+        print()
+
     # Find checkpoints
     checkpoints = find_patchcore_checkpoints(checkpoint_dir)
 
@@ -269,7 +288,13 @@ def main():
         print(f"No PatchCore checkpoints found in {checkpoint_dir}")
         sys.exit(1)
 
-    # Filter by dataset/category
+    # Filter by config
+    if config_datasets:
+        checkpoints = [c for c in checkpoints if c[0] in config_datasets]
+    if config_categories:
+        checkpoints = [c for c in checkpoints if c[1] in config_categories]
+
+    # Filter by command line args (override config)
     if args.dataset:
         checkpoints = [c for c in checkpoints if c[0] == args.dataset]
     if args.category:
@@ -278,6 +303,13 @@ def main():
     print(f"Found {len(checkpoints)} checkpoint(s):")
     for dataset, category, ckpt_path in checkpoints:
         print(f"  [{dataset}] {category}: {ckpt_path}")
+
+    # Warn about missing checkpoints from config
+    if config_categories:
+        found_categories = {c[1] for c in checkpoints}
+        missing = set(config_categories) - found_categories
+        if missing:
+            print(f"\nWarning: Missing checkpoints for categories: {sorted(missing)}")
 
     if args.list_only:
         return
