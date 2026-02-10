@@ -2,8 +2,8 @@
 
 # Data
 data:
-  # root: dataset/MMAD
-  root: /Users/mungughyeon/Documents/Bootcamp/Likelion/backup/datasets/MMAD
+  root: dataset/MMAD
+  # root: /Users/mungughyeon/Documents/Bootcamp/Likelion/backup/datasets/MMAD
   output_root: ./output
   image_size: [224, 224] # PatchCore: [700, 700], Efficientad: [256, 256]
   datasets: ["GoodsAD", "MVTec-LOCO"] # ["MVTec-AD", "VisA", "GoodsAD", "MVTec-LOCO"]
@@ -61,7 +61,7 @@ training:
 
 # Engine
 engine:
-  accelerator: cpu  # auto | cpu | gpu | mps 
+  accelerator: auto  # auto | cpu | gpu | mps 
   enable_progress_bar: false
   logger: wandb
 

@@ -14,7 +14,7 @@ from mmad_inspector.storage.db import connect, insert_report, list_reports, get_
 
 app = FastAPI(title="MMAD Inspector API")
 
-cfg_path = os.environ.get("RUNTIME_CFG", "configs/runtime.yaml")
+cfg_path = os.environ.get("RUNTIME_CFG", "configs/anomaly.yaml")
 cfg = load_runtime_config(cfg_path)
 
 # Step 1 components

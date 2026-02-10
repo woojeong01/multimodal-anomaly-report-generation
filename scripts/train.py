@@ -1,8 +1,8 @@
 """PatchCore 학습 스크립트
 
 Usage:
-    python scripts/train.py --config configs/runtime.yaml
-    python scripts/train.py --config configs/runtime.yaml --normal-dir /path/to/good
+    python scripts/train.py --config configs/anomaly.yaml
+    python scripts/train.py --config configs/anomaly.yaml --normal-dir /path/to/good
 """
 from __future__ import annotations
 import argparse
@@ -156,7 +156,7 @@ def get_image_paths(data_dir: str, extensions: list[str]) -> list[str]:
 
 def main():
     parser = argparse.ArgumentParser(description="Train PatchCore model")
-    parser.add_argument("--config", type=str, default="configs/runtime.yaml")
+    parser.add_argument("--config", type=str, default="configs/anomaly.yaml")
     parser.add_argument("--normal-dir", type=str)
     parser.add_argument("--output-dir", type=str)
     parser.add_argument("--category", type=str, default="custom")

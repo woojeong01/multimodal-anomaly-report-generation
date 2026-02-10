@@ -119,7 +119,7 @@ class EarlyStoppingTracker(Callback):
 
 
 class Anomalibs:
-    def __init__(self, config_path: str = "configs/runtime.yaml"):
+    def __init__(self, config_path: str = "configs/anomaly.yaml"):
         self.config = load_config(config_path)
         self.model_name = self.config["anomaly"]["model"]
         self.model_params = self.filter_none(
@@ -575,11 +575,14 @@ class Anomalibs:
             if self.model_name == "winclip":
                 model.setup(class_name=category)
 
+            t0 = time.time()
             predictions = engine.predict(
                 datamodule=datamodule,
                 model=model,
                 ckpt_path=ckpt_path,
             )
+            self.last_inference_time = time.time() - t0
+            self.last_n_images = sum(len(b.image_path) for b in predictions)
 
         # save json
         if save_json is None:
@@ -610,10 +613,16 @@ class Anomalibs:
         predict_loader = datamodule.predict_dataloader()
 
         all_predictions = []
+        inference_time = 0.0
+        n_images = 0
         with torch.no_grad():
             for batch in predict_loader:
                 images = batch.image.to(self.device)
+
+                t0 = time.time()
                 outputs = model(images)
+                inference_time += time.time() - t0
+                n_images += images.shape[0]
 
                 anomaly_map = getattr(outputs, "anomaly_map", None)
                 pred_score = getattr(outputs, "pred_score", None)
@@ -637,6 +646,8 @@ class Anomalibs:
                 )
                 all_predictions.append(result)
 
+        self.last_inference_time = inference_time
+        self.last_n_images = n_images
         return all_predictions
 
     def get_mask_path(self, image_path: str, dataset: str) -> str | None:
@@ -796,11 +807,14 @@ class Anomalibs:
         all_predictions = {}
         for idx, (dataset, category) in enumerate(categories, 1):
             print(f"\n[{idx}/{total}] Predicting: {dataset}/{category}...")
+            self.last_inference_time = 0.0
+            self.last_n_images = 0
             start = time.time()
             key = f"{dataset}/{category}"
             all_predictions[key] = self.predict(dataset, category, save_json)
             elapsed = time.time() - start
-            msg = f"[{idx}/{total}] {dataset}/{category} done ({elapsed:.1f}s)"
+            infer_t = self.last_inference_time
+            msg = f"[{idx}/{total}] {dataset}/{category} done ({elapsed:.1f}s, inference: {infer_t:.1f}s)"
             print(f"✓ {msg}")
             get_inference_logger().info(msg)
 

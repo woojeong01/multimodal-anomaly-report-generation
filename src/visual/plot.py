@@ -535,7 +535,7 @@ def visualize_single_prediction(
     dataset: str = None,
     category: str = None,
     sample_idx: int = 0,
-    config_path: str = "configs/runtime.yaml",
+    config_path: str = "configs/anomaly.yaml",
     figsize: tuple = (16, 4),
     show: bool = True,
 ):
