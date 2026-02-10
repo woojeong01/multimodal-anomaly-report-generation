@@ -251,8 +251,18 @@ def load_tensorrt_model(tensorrt_path: Path, device: str = "cuda"):
 def find_model_pairs(
     checkpoint_dir: Path,
     onnx_dir: Path,
+    version: int | None = None,
+    datasets: List[str] | None = None,
+    categories: List[str] | None = None,
 ) -> List[Tuple[str, str, Optional[Path], Optional[Path]]]:
     """Find matching checkpoint and ONNX model pairs.
+
+    Args:
+        checkpoint_dir: Directory containing checkpoints
+        onnx_dir: Directory containing ONNX models
+        version: Specific version to use (None = latest)
+        datasets: Filter by dataset names
+        categories: Filter by category names
 
     Returns:
         List of (dataset, category, checkpoint_path, onnx_path)
@@ -264,47 +274,67 @@ def find_model_pairs(
     patchcore_dir = checkpoint_dir / "Patchcore" if (checkpoint_dir / "Patchcore").exists() else checkpoint_dir
 
     if patchcore_dir.exists():
-        for dataset_dir in patchcore_dir.iterdir():
+        for dataset_dir in sorted(patchcore_dir.iterdir()):
             if not dataset_dir.is_dir() or dataset_dir.name.startswith("."):
                 continue
             if dataset_dir.name in ["eval", "predictions"]:
                 continue
+            if datasets and dataset_dir.name not in datasets:
+                continue
 
-            for category_dir in dataset_dir.iterdir():
+            for category_dir in sorted(dataset_dir.iterdir()):
                 if not category_dir.is_dir():
                     continue
+                if categories and category_dir.name not in categories:
+                    continue
 
-                # Find latest version
-                versions = []
-                for v_dir in category_dir.iterdir():
-                    if v_dir.is_dir() and v_dir.name.startswith("v"):
-                        try:
-                            versions.append((int(v_dir.name[1:]), v_dir))
-                        except ValueError:
-                            continue
+                ckpt = None
 
-                if versions:
-                    latest = max(versions, key=lambda x: x[0])[1]
-                    ckpt = latest / "model.ckpt"
-                    if ckpt.exists():
-                        key = (dataset_dir.name, category_dir.name)
-                        if key not in seen:
-                            seen.add(key)
-                            onnx_path = onnx_dir / dataset_dir.name / category_dir.name / "model.onnx"
-                            pairs.append((
-                                dataset_dir.name,
-                                category_dir.name,
-                                ckpt,
-                                onnx_path if onnx_path.exists() else None,
-                            ))
+                # If specific version requested
+                if version is not None:
+                    ver_dir = category_dir / f"v{version}"
+                    candidate = ver_dir / "model.ckpt"
+                    if candidate.exists():
+                        ckpt = candidate
+                else:
+                    # Find latest version
+                    versions = []
+                    for v_dir in category_dir.iterdir():
+                        if v_dir.is_dir() and v_dir.name.startswith("v"):
+                            try:
+                                versions.append((int(v_dir.name[1:]), v_dir))
+                            except ValueError:
+                                continue
+
+                    if versions:
+                        latest = max(versions, key=lambda x: x[0])[1]
+                        candidate = latest / "model.ckpt"
+                        if candidate.exists():
+                            ckpt = candidate
+
+                if ckpt:
+                    key = (dataset_dir.name, category_dir.name)
+                    if key not in seen:
+                        seen.add(key)
+                        onnx_path = onnx_dir / dataset_dir.name / category_dir.name / "model.onnx"
+                        pairs.append((
+                            dataset_dir.name,
+                            category_dir.name,
+                            ckpt,
+                            onnx_path if onnx_path.exists() else None,
+                        ))
 
     # Find ONNX models without checkpoints
     if onnx_dir.exists():
-        for dataset_dir in onnx_dir.iterdir():
+        for dataset_dir in sorted(onnx_dir.iterdir()):
             if not dataset_dir.is_dir():
                 continue
-            for category_dir in dataset_dir.iterdir():
+            if datasets and dataset_dir.name not in datasets:
+                continue
+            for category_dir in sorted(dataset_dir.iterdir()):
                 if not category_dir.is_dir():
+                    continue
+                if categories and category_dir.name not in categories:
                     continue
                 onnx_path = category_dir / "model.onnx"
                 if onnx_path.exists():
@@ -461,13 +491,27 @@ def main():
 
     # Load config if provided
     model_input_size = tuple(args.image_size)
+    config_version = None
+    config_datasets = None
+    config_categories = None
+
     if args.config:
         from src.utils.loaders import load_config
         config = load_config(args.config)
         config_image_size = config.get("data", {}).get("image_size", None)
+        config_version = config.get("predict", {}).get("version", None)
+        config_datasets = config.get("data", {}).get("datasets", None)
+        config_categories = config.get("data", {}).get("categories", None)
+
         if config_image_size:
             model_input_size = tuple(config_image_size)
-            print(f"Using image_size from config: {model_input_size}")
+
+        print(f"Using config: {args.config}")
+        print(f"  image_size: {model_input_size}")
+        print(f"  version: v{config_version}" if config_version is not None else "  version: auto (latest)")
+        print(f"  datasets: {config_datasets}")
+        print(f"  categories: {config_categories}")
+        print()
 
     # Prepare model pairs
     if args.checkpoint or args.onnx:
@@ -488,7 +532,13 @@ def main():
         checkpoint_dir = Path(args.checkpoint_dir)
         onnx_dir = Path(args.onnx_dir)
 
-        model_pairs = find_model_pairs(checkpoint_dir, onnx_dir)
+        model_pairs = find_model_pairs(
+            checkpoint_dir,
+            onnx_dir,
+            version=config_version,
+            datasets=config_datasets,
+            categories=config_categories,
+        )
 
         if not model_pairs:
             print("No models found. Check --checkpoint-dir and --onnx-dir paths.")
