@@ -20,10 +20,16 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
+import subprocess
 import sys
+import tempfile
 import time
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
+
+import yaml
 
 from tqdm import tqdm
 
@@ -38,10 +44,162 @@ from src.mllm.factory import MODEL_REGISTRY, get_llm_client, list_llm_models
 from src.eval.metrics import calculate_accuracy_mmad
 
 
+def stratified_sample(image_paths: list[str], n_per_folder: int, seed: int = 42) -> list[str]:
+    """폴더(dataset/category/split)별 N장 샘플링.
+
+    이미지 경로를 {dataset}/{category}/{split} 기준으로 그룹핑 후
+    각 그룹에서 최대 n_per_folder장을 랜덤 추출한다.
+    """
+    rng = random.Random(seed)
+
+    folders = defaultdict(list)
+    for path in image_paths:
+        parts = path.split("/")
+        if len(parts) >= 4:
+            key = f"{parts[0]}/{parts[1]}/{parts[3]}"  # dataset/category/split(good|bad)
+        elif len(parts) >= 2:
+            key = f"{parts[0]}/{parts[1]}"
+        else:
+            key = "unknown"
+        folders[key].append(path)
+
+    sampled = []
+    for key in sorted(folders.keys()):
+        imgs = folders[key]
+        sampled.extend(rng.sample(imgs, min(n_per_folder, len(imgs))))
+
+    n_good = sum(1 for s in sampled if "/good/" in s)
+    n_bad = len(sampled) - n_good
+    print(f"Stratified sampling: {n_per_folder}장/폴더, {len(folders)}폴더")
+    print(f"  Total: {len(image_paths)} -> Sampled: {len(sampled)} (normal={n_good}, anomaly={n_bad})")
+
+    return sampled
+
+
 def load_mmad_data(json_path: str) -> dict:
     """Load MMAD dataset JSON."""
     with open(json_path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def load_ad_predictions(ad_output_path: str) -> dict:
+    """Load AD predictions JSON and index by image path."""
+    with open(ad_output_path, "r", encoding="utf-8") as f:
+        predictions = json.load(f)
+
+    if isinstance(predictions, list):
+        indexed = {}
+        for p in predictions:
+            img_key = p.get("image_path") or p.get("image") or p.get("img_path") or p.get("path")
+            if img_key:
+                img_key = img_key.lstrip("./")
+                indexed[img_key] = p
+        return indexed
+    elif isinstance(predictions, dict):
+        if "predictions" in predictions:
+            return load_ad_predictions(predictions["predictions"])
+        return predictions
+    return predictions
+
+
+def _build_ad_config(cfg: ExperimentConfig, data_root: str, mmad_json: str) -> str:
+    """Load AD config and override data paths from experiment config.
+
+    Returns path to a temporary config YAML with correct paths.
+    """
+    ad_config_path = cfg.ad_config or "patchcore_training/config/config.yaml"
+    if not Path(ad_config_path).exists():
+        print(f"Error: AD config not found: {ad_config_path}")
+        sys.exit(1)
+
+    with open(ad_config_path, "r", encoding="utf-8") as f:
+        ad_cfg = yaml.safe_load(f)
+
+    # Override paths from experiment config
+    ad_cfg.setdefault("data", {})
+    ad_cfg["data"]["root"] = data_root
+    ad_cfg["data"]["mmad_json"] = mmad_json
+
+    if cfg.ad_checkpoint_dir:
+        ad_cfg.setdefault("output", {})
+        ad_cfg["output"]["checkpoint_dir"] = cfg.ad_checkpoint_dir
+
+    # Write to temp file (same dir as output so it persists for debugging)
+    output_dir = Path(cfg.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    tmp_path = str(output_dir / f"_ad_config_{cfg.ad_model}.yaml")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        yaml.dump(ad_cfg, f, default_flow_style=False, allow_unicode=True)
+
+    return tmp_path
+
+
+def run_ad_inference(cfg: ExperimentConfig, data_root: str, mmad_json: str) -> str:
+    """Run AD model inference and return the predictions JSON path.
+
+    If cfg.ad_output already points to an existing file, skip inference.
+    Otherwise run patchcore_training/scripts/inference.py via subprocess.
+    Data paths from experiment config are automatically passed to inference.
+    """
+    # ad.output를 명시적으로 지정한 경우에만 스킵 (사용자가 의도적으로 재사용)
+    if cfg.ad_output and Path(cfg.ad_output).exists():
+        print(f"Using existing AD predictions (ad.output): {cfg.ad_output}")
+        return cfg.ad_output
+
+    # Determine output path — 항상 새로 실행
+    output_dir = Path(cfg.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    ad_output = str(output_dir / f"{cfg.ad_model}_predictions.json")
+
+    # Build temp config with overridden data paths
+    tmp_config = _build_ad_config(cfg, data_root, mmad_json)
+
+    # Build inference command
+    inference_script = str(PROJ_ROOT / "patchcore_training" / "scripts" / "inference.py")
+    if not Path(inference_script).exists():
+        print(f"Error: inference script not found: {inference_script}")
+        sys.exit(1)
+
+    cmd = [
+        sys.executable, inference_script,
+        "--config", tmp_config,
+        "--output", ad_output,
+    ]
+
+    if cfg.ad_thresholds and Path(cfg.ad_thresholds).exists():
+        cmd.extend(["--thresholds", cfg.ad_thresholds])
+
+    if cfg.max_images:
+        cmd.extend(["--max-images", str(cfg.max_images)])
+
+    print("=" * 60)
+    print("Running AD Model Inference")
+    print("=" * 60)
+    print(f"Script:     {inference_script}")
+    print(f"Config:     {tmp_config} (paths overridden from experiment.yaml)")
+    print(f"Data root:  {data_root}")
+    print(f"MMAD JSON:  {mmad_json}")
+    print(f"Thresholds: {cfg.ad_thresholds or 'default'}")
+    print(f"Output:     {ad_output}")
+    print()
+
+    # 실시간 출력 (버퍼링 없이 바로 표시)
+    process = subprocess.Popen(
+        cmd, cwd=str(PROJ_ROOT),
+        stdout=sys.stdout, stderr=sys.stderr,
+    )
+    process.wait()
+
+    if process.returncode != 0:
+        print(f"Error: AD inference failed (exit code {process.returncode})")
+        sys.exit(1)
+
+    if not Path(ad_output).exists():
+        print(f"Error: AD inference did not produce output: {ad_output}")
+        print(f"Check the inference log above for details.")
+        sys.exit(1)
+
+    return ad_output
 
 
 def resolve_paths(cfg: ExperimentConfig) -> tuple[str, str]:
@@ -90,6 +248,19 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
     output_name = f"answers_{cfg.few_shot}_shot_{llm_safe}_{template_type}{ad_suffix}"
     answers_json_path = output_dir / f"{output_name}.json"
 
+    # Load dataset & sampling (AD inference 전에 먼저 수행)
+    mmad_data = load_mmad_data(mmad_json)
+    image_paths = list(mmad_data.keys())
+    total_available = len(image_paths)
+
+    # Stratified sampling (폴더별 N장)
+    if cfg.sample_per_folder:
+        image_paths = stratified_sample(image_paths, cfg.sample_per_folder, cfg.sample_seed)
+
+    # max_images는 샘플링 이후에 적용
+    if cfg.max_images:
+        image_paths = image_paths[:cfg.max_images]
+
     print("=" * 60)
     print("MMAD Experiment Runner")
     print("=" * 60)
@@ -99,11 +270,30 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
     print(f"Few-shot:    {cfg.few_shot}")
     print(f"Template:    {template_type}")
     print(f"Image size:  {cfg.max_image_size}")
-    print(f"Max images:  {cfg.max_images or 'all'}")
+    print(f"Images:      {len(image_paths)} / {total_available}")
     print(f"Data root:   {data_root}")
     print(f"Output:      {answers_json_path}")
     print("=" * 60)
     print()
+
+    # 샘플링된 이미지만으로 필터링된 MMAD json 생성 (AD inference용)
+    sampled_mmad_json = mmad_json
+    if len(image_paths) < total_available:
+        sampled_data = {k: mmad_data[k] for k in image_paths}
+        sampled_json_path = output_dir / "_sampled_mmad.json"
+        with open(sampled_json_path, "w", encoding="utf-8") as f:
+            json.dump(sampled_data, f, ensure_ascii=False)
+        sampled_mmad_json = str(sampled_json_path)
+        print(f"Filtered MMAD json: {len(sampled_data)} images -> {sampled_json_path}")
+        print()
+
+    # Run AD inference if ad_model is set (샘플링된 이미지만 처리)
+    ad_predictions = None
+    if cfg.ad_model:
+        ad_output_path = run_ad_inference(cfg, data_root, sampled_mmad_json)
+        ad_predictions = load_ad_predictions(ad_output_path)
+        print(f"Loaded {len(ad_predictions)} AD predictions")
+        print()
 
     # Load existing results if resuming
     all_answers = []
@@ -121,16 +311,6 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
     except ValueError as e:
         print(f"Error: {e}")
         sys.exit(1)
-
-    # Load dataset
-    mmad_data = load_mmad_data(mmad_json)
-    image_paths = list(mmad_data.keys())
-
-    if cfg.max_images:
-        image_paths = image_paths[:cfg.max_images]
-
-    print(f"Total images: {len(image_paths)}")
-    print()
 
     # Track statistics
     total_correct = 0
@@ -162,14 +342,21 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
             errors += 1
             continue
 
+        # Get AD prediction for this image
+        ad_info = None
+        if ad_predictions is not None:
+            ad_info = ad_predictions.get(image_rel)
+            if ad_info is None:
+                ad_info = ad_predictions.get(image_rel.replace("\\", "/"))
+
         # Generate answers
         if cfg.batch_mode:
             questions, answers, predicted, q_types = llm_client.generate_answers_batch(
-                query_image_path, meta, few_shot_paths
+                query_image_path, meta, few_shot_paths, ad_info=ad_info
             )
         else:
             questions, answers, predicted, q_types = llm_client.generate_answers(
-                query_image_path, meta, few_shot_paths
+                query_image_path, meta, few_shot_paths, ad_info=ad_info
             )
 
         if predicted is None or len(predicted) != len(answers):
@@ -255,14 +442,22 @@ def main():
                         help="Override LLM model name")
     parser.add_argument("--ad-model", type=str, default=None,
                         help="Override AD model (null = no AD)")
+    parser.add_argument("--ad-output", type=str, default=None,
+                        help="Path to existing AD predictions JSON (skip inference)")
     parser.add_argument("--few-shot", type=int, default=None,
                         help="Override few-shot count")
     parser.add_argument("--max-images", type=int, default=None,
                         help="Override max images")
+    parser.add_argument("--sample-per-folder", type=int, default=None,
+                        help="Override sample count per folder (stratified sampling)")
+    parser.add_argument("--sample-seed", type=int, default=None,
+                        help="Override sampling seed")
     parser.add_argument("--data-root", type=str, default=None,
                         help="Override data root path")
     parser.add_argument("--output-dir", type=str, default=None,
                         help="Override output directory")
+    parser.add_argument("--batch-mode", type=str, default=None, choices=["true", "false"],
+                        help="Override batch mode (default: auto per model)")
     parser.add_argument("--resume", action="store_true", default=None,
                         help="Resume from existing results")
 
@@ -294,16 +489,32 @@ def main():
         cfg.llm = args.llm
     if args.ad_model is not None:
         cfg.ad_model = None if args.ad_model.lower() == "null" else args.ad_model
+    if args.ad_output is not None:
+        cfg.ad_output = args.ad_output
     if args.few_shot is not None:
         cfg.few_shot = args.few_shot
     if args.max_images is not None:
         cfg.max_images = args.max_images
+    if args.sample_per_folder is not None:
+        cfg.sample_per_folder = args.sample_per_folder
+    if args.sample_seed is not None:
+        cfg.sample_seed = args.sample_seed
     if args.data_root is not None:
         cfg.data_root = args.data_root
     if args.output_dir is not None:
         cfg.output_dir = args.output_dir
+    if args.batch_mode is not None:
+        cfg.batch_mode = args.batch_mode == "true"
     if args.resume is not None:
         cfg.resume = args.resume
+
+    # 모델별 기본값 적용 (CLI로 명시하지 않은 경우)
+    _BATCH_MODE_DEFAULTS = {
+        "llava": False,
+        "llava-onevision": False,
+    }
+    if args.batch_mode is None and cfg.llm in _BATCH_MODE_DEFAULTS:
+        cfg.batch_mode = _BATCH_MODE_DEFAULTS[cfg.llm]
 
     run_experiment(cfg)
 

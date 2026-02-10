@@ -2,7 +2,7 @@
 # Change ad_model and llm, then run: python scripts/run_experiment.py
 
 ad_model: null          # patchcore | winclip | efficientad | null (no AD)
-llm: qwen               # qwen | llava | gpt-4o | claude | gemini | internvl | ...
+llm: llava               # qwen | llava | gpt-4o | claude | gemini | internvl | ...
 
 # Data paths (override with env vars or CLI args)
 data_root: /content/drive/Othercomputers/mynotebook/multimodal-anomaly-report-generation/dataset/MMAD
@@ -12,7 +12,16 @@ output_dir: outputs/eval
 eval:
   few_shot: 1
   similar_template: false
-  max_images: 5       # null = all images, set number for quick testing
+  max_images: null       # null = all images, set number for quick testing
+  sample_per_folder: 1   # 폴더별 N장 샘플링 (null = 전체). dataset/category/split별로 N장씩 추출
+  sample_seed: 42        # 샘플링 시드 (재현성)
   max_image_size: [700, 700]  # LLM에 전달할 이미지 최대 크기 [width, height]
-  batch_mode: true
+  batch_mode: false
   resume: false
+
+# AD model inference settings (ad_model이 null이 아닐 때 사용)
+ad:
+  config: patchcore_training/config/config.yaml   # inference.py 설정 파일
+  output: null                                     # 기존 예측 JSON (있으면 inference 스킵)
+  thresholds: patchcore_training/config/thresholds.yaml  # 카테고리별 threshold
+  checkpoint_dir: /content/drive/Othercomputers/mynotebook/multimodal-anomaly-report-generation/dataset/MMAD/checkpoints/patchcore_224/Patchcore  # {checkpoint_dir}/{dataset}/{category}/model.pt
