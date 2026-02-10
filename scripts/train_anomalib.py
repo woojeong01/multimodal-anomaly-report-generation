@@ -330,15 +330,18 @@ class PatchCoreTrainer:
         return self
 
     def test(self, dataset: str, category: str) -> dict:
-        """Evaluate model on test set. Returns metrics dict."""
+        """Evaluate model on test set. Returns metrics dict including AUPRO."""
         ckpt_path = self.get_ckpt_path(dataset, category)
 
         if ckpt_path is None:
             print(f"  No checkpoint found for {dataset}/{category}")
             return {}
 
-        # Load model directly from checkpoint to preserve original evaluator
+        # Load model from checkpoint
         model = Patchcore.load_from_checkpoint(str(ckpt_path))
+
+        # Replace evaluator with one that includes AUPRO
+        model.evaluator = self.get_evaluator()
 
         dm_kwargs = self.get_datamodule_kwargs()
         dm_kwargs["include_mask"] = True
