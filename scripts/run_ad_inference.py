@@ -1,4 +1,4 @@
-"""Run anomaly detection inference and generate JSON output for LLM evaluation.
+"""Run PatchCore anomaly detection inference and generate JSON output for LLM evaluation.
 
 This script processes images using ONNX anomaly detection models and generates
 a JSON file that can be used with eval_llm_baseline.py --with-ad option.
@@ -7,23 +7,23 @@ Usage:
     # Run inference on all images in mmad.json
     python scripts/run_ad_inference.py \
         --models-dir models/onnx \
-        --data-root /Volumes/T7/Dataset/MMAD \
-        --mmad-json /Volumes/T7/Dataset/MMAD/mmad_10classes.json \
+        --data-root /path/to/MMAD \
+        --mmad-json /path/to/mmad_10classes.json \
         --output output/ad_predictions.json
 
     # Run inference with custom threshold
     python scripts/run_ad_inference.py \
         --models-dir models/onnx \
-        --data-root /Volumes/T7/Dataset/MMAD \
-        --mmad-json /Volumes/T7/Dataset/MMAD/mmad_10classes.json \
+        --data-root /path/to/MMAD \
+        --mmad-json /path/to/mmad_10classes.json \
         --threshold 0.3 \
         --output output/ad_predictions.json
 
     # Test with max images
     python scripts/run_ad_inference.py \
         --models-dir models/onnx \
-        --data-root /Volumes/T7/Dataset/MMAD \
-        --mmad-json /Volumes/T7/Dataset/MMAD/mmad_10classes.json \
+        --data-root /path/to/MMAD \
+        --mmad-json /path/to/mmad_10classes.json \
         --max-images 10 \
         --output output/ad_predictions_test.json
 """
@@ -33,19 +33,18 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 import cv2
 import numpy as np
 from tqdm import tqdm
 
-# Add project root to path
 SCRIPT_PATH = Path(__file__).resolve()
 PROJ_ROOT = SCRIPT_PATH.parents[1]
 if str(PROJ_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJ_ROOT))
 
-from src.anomaly import EfficientADOnnx, EfficientADModelManager, AnomalyResult
+from src.anomaly import PatchCoreOnnx, PatchCoreModelManager, AnomalyResult
 
 
 def parse_image_path(image_path: str) -> tuple[str, str]:
@@ -71,11 +70,10 @@ def compute_defect_location(anomaly_map: np.ndarray, threshold: float = 0.5) -> 
         threshold: Threshold for defect detection
 
     Returns:
-        Dictionary with location information
+        Dictionary with location information for LLM context
     """
     h, w = anomaly_map.shape
 
-    # Find defect region
     defect_mask = anomaly_map > threshold
 
     if not defect_mask.any():
@@ -92,15 +90,15 @@ def compute_defect_location(anomaly_map: np.ndarray, threshold: float = 0.5) -> 
     y_min, y_max = coords[0].min(), coords[0].max()
     x_min, x_max = coords[1].min(), coords[1].max()
 
-    # Compute center
-    center_y = (y_min + y_max) / 2
-    center_x = (x_min + x_max) / 2
+    # Compute center (normalized 0-1)
+    center_y = (y_min + y_max) / 2 / h
+    center_x = (x_min + x_max) / 2 / w
 
     # Determine region (3x3 grid)
-    region_y = "top" if center_y < h / 3 else ("bottom" if center_y > 2 * h / 3 else "center")
-    region_x = "left" if center_x < w / 3 else ("right" if center_x > 2 * w / 3 else "center")
+    region_y = "top" if center_y < 1/3 else ("bottom" if center_y > 2/3 else "middle")
+    region_x = "left" if center_x < 1/3 else ("right" if center_x > 2/3 else "center")
 
-    if region_y == "center" and region_x == "center":
+    if region_y == "middle" and region_x == "center":
         region = "center"
     else:
         region = f"{region_y}-{region_x}"
@@ -108,12 +106,16 @@ def compute_defect_location(anomaly_map: np.ndarray, threshold: float = 0.5) -> 
     # Compute area ratio
     area_ratio = float(defect_mask.sum()) / (h * w)
 
+    # Compute max anomaly score in defect region
+    confidence = float(anomaly_map[defect_mask].max())
+
     return {
         "has_defect": True,
         "region": region,
         "bbox": [int(x_min), int(y_min), int(x_max), int(y_max)],
-        "center": [float(center_x), float(center_y)],
+        "center": [round(center_x, 3), round(center_y, 3)],
         "area_ratio": round(area_ratio, 4),
+        "confidence": round(confidence, 4),
     }
 
 
@@ -139,7 +141,6 @@ def result_to_dict(
         "threshold": result.threshold,
     }
 
-    # Add location information if anomaly map is available
     if result.anomaly_map is not None:
         location_info = compute_defect_location(result.anomaly_map, result.threshold)
         output["defect_location"] = location_info
@@ -151,7 +152,6 @@ def result_to_dict(
                 "std": round(float(result.anomaly_map.std()), 4),
             }
 
-    # Add metadata
     if result.metadata:
         output["metadata"] = result.metadata
 
@@ -159,21 +159,13 @@ def result_to_dict(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run AD inference and generate JSON for LLM evaluation")
+    parser = argparse.ArgumentParser(description="Run PatchCore AD inference and generate JSON for LLM evaluation")
 
-    # Model settings
     parser.add_argument(
         "--models-dir",
         type=str,
         default="models/onnx",
         help="Directory containing ONNX models",
-    )
-    parser.add_argument(
-        "--model-type",
-        type=str,
-        default="efficientad",
-        choices=["efficientad", "patchcore", "uniad"],
-        help="Type of anomaly detection model",
     )
     parser.add_argument(
         "--threshold",
@@ -188,8 +180,14 @@ def main():
         choices=["cpu", "cuda"],
         help="Inference device",
     )
+    parser.add_argument(
+        "--input-size",
+        type=int,
+        nargs=2,
+        default=[224, 224],
+        help="Model input size (height width)",
+    )
 
-    # Data settings
     parser.add_argument(
         "--data-root",
         type=str,
@@ -209,7 +207,6 @@ def main():
         help="Maximum number of images to process (for testing)",
     )
 
-    # Output settings
     parser.add_argument(
         "--output",
         type=str,
@@ -230,7 +227,6 @@ def main():
 
     args = parser.parse_args()
 
-    # Validate paths
     models_dir = Path(args.models_dir)
     data_root = Path(args.data_root)
     mmad_json = Path(args.mmad_json)
@@ -268,26 +264,18 @@ def main():
         print(f"Loaded {len(existing_results)} existing results")
 
     # Initialize model manager
-    print(f"Initializing {args.model_type} model manager from: {models_dir}")
+    print(f"Initializing PatchCore model manager from: {models_dir}")
+    model_manager = PatchCoreModelManager(
+        models_dir=models_dir,
+        threshold=args.threshold,
+        device=args.device,
+        input_size=tuple(args.input_size),
+    )
 
-    if args.model_type == "efficientad":
-        # Check available models
-        available_classes = EfficientADOnnx.list_available_classes(models_dir)
-        if not available_classes:
-            # Try subdirectories (models/onnx/GoodsAD/cigarette_box/model.onnx)
-            for dataset_dir in models_dir.iterdir():
-                if dataset_dir.is_dir():
-                    sub_classes = EfficientADOnnx.list_available_classes(dataset_dir)
-                    if sub_classes:
-                        available_classes.extend([f"{dataset_dir.name}/{c}" for c in sub_classes])
-
-        print(f"Available models: {available_classes}")
-
-        # Create model cache
-        model_cache: Dict[str, EfficientADOnnx] = {}
-    else:
-        print(f"Error: Model type '{args.model_type}' not yet supported")
-        sys.exit(1)
+    available_models = model_manager.list_available_models()
+    print(f"Available models: {len(available_models)}")
+    for dataset, category in available_models:
+        print(f"  - {dataset}/{category}")
 
     # Process images
     results = list(existing_results.values())
@@ -302,50 +290,18 @@ def main():
 
     pbar = tqdm(image_paths, desc="Processing", ncols=100)
     for image_path in pbar:
-        # Skip if already processed
         if image_path in existing_results:
             continue
 
-        # Parse dataset and class
         dataset, class_name = parse_image_path(image_path)
-
-        # Find model for this class
         model_key = f"{dataset}/{class_name}"
 
-        # Try to get or load model
-        if model_key not in model_cache:
-            # Try different paths
-            possible_paths = [
-                models_dir / dataset / class_name / "model.onnx",
-                models_dir / dataset / class_name / "efficientad.onnx",
-                models_dir / f"{class_name}.onnx",
-            ]
-
-            model_path = None
-            for p in possible_paths:
-                if p.exists():
-                    model_path = p
-                    break
-
-            if model_path is None:
-                skipped += 1
-                pbar.set_postfix({"done": processed, "skip": skipped, "err": errors})
-                continue
-
-            try:
-                model = EfficientADOnnx(
-                    model_path=model_path,
-                    threshold=args.threshold,
-                    device=args.device,
-                )
-                model.load_model()
-                model_cache[model_key] = model
-            except Exception as e:
-                errors += 1
-                pbar.set_postfix({"done": processed, "skip": skipped, "err": errors})
-                continue
-
-        model = model_cache[model_key]
+        # Check if model exists
+        model_path = model_manager.get_model_path(dataset, class_name)
+        if not model_path.exists():
+            skipped += 1
+            pbar.set_postfix({"done": processed, "skip": skipped, "err": errors})
+            continue
 
         # Load image
         image_full_path = data_root / image_path
@@ -361,9 +317,9 @@ def main():
                 continue
 
             # Run inference
-            result = model.predict(image)
+            result = model_manager.predict(dataset, class_name, image)
 
-            # Add class info to metadata
+            # Add metadata
             result.metadata["dataset"] = dataset
             result.metadata["class_name"] = class_name
 
@@ -403,7 +359,6 @@ def main():
     print(f"Errors: {errors}")
     print(f"Output saved to: {output_path}")
 
-    # Print sample output
     if results:
         print()
         print("Sample output:")
