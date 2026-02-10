@@ -26,6 +26,7 @@ if str(PROJ_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJ_ROOT))
 
 import argparse
+import numpy as np
 from tqdm import tqdm
 import json
 import time
@@ -119,13 +120,9 @@ class PatchCoreTrainer:
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
 
-    def get_evaluator(self, fast_aupro: bool = True):
-        """Create Evaluator with metrics including AUPRO.
-
-        Args:
-            fast_aupro: If True, use fewer thresholds for faster AUPRO computation
-        """
-        from anomalib.metrics import AUROC, F1Score, AUPRO
+    def get_evaluator(self):
+        """Create Evaluator with basic metrics (no AUPRO - computed separately)."""
+        from anomalib.metrics import AUROC, F1Score
         from anomalib.metrics.evaluator import Evaluator
 
         val_metrics = [
@@ -140,14 +137,56 @@ class PatchCoreTrainer:
             F1Score(fields=["pred_mask", "gt_mask"], prefix="pixel_", strict=False),
         ]
 
-        # Add AUPRO unless skipped
-        if not getattr(self, "skip_aupro", False):
-            aupro_kwargs = {"fields": ["anomaly_map", "gt_mask"], "strict": False}
-            if fast_aupro:
-                aupro_kwargs["num_thresholds"] = 50
-            test_metrics.append(AUPRO(**aupro_kwargs))
-
         return Evaluator(val_metrics=val_metrics, test_metrics=test_metrics)
+
+    @staticmethod
+    def compute_pro(preds: np.ndarray, targets: np.ndarray, num_thresholds: int = 50) -> float:
+        """Compute Per-Region Overlap (PRO) score.
+
+        Args:
+            preds: Predicted anomaly maps (N, H, W), values 0-1
+            targets: Ground truth masks (N, H, W), binary
+            num_thresholds: Number of thresholds to sample
+
+        Returns:
+            PRO score (0-1)
+        """
+        import cv2
+
+        # Thresholds from 0 to 1
+        thresholds = np.linspace(0, 1, num_thresholds)
+        pro_scores = []
+
+        for threshold in thresholds:
+            region_overlaps = []
+
+            for pred, target in zip(preds, targets):
+                if target.max() == 0:  # Skip normal samples
+                    continue
+
+                # Binary prediction at threshold
+                pred_binary = (pred >= threshold).astype(np.uint8)
+                target_binary = (target > 0).astype(np.uint8)
+
+                # Find connected components in ground truth
+                num_labels, labels = cv2.connectedComponents(target_binary)
+
+                for label_id in range(1, num_labels):  # Skip background (0)
+                    region_mask = (labels == label_id)
+                    region_area = region_mask.sum()
+
+                    if region_area == 0:
+                        continue
+
+                    # Overlap between prediction and this region
+                    overlap = (pred_binary & region_mask).sum()
+                    overlap_ratio = overlap / region_area
+                    region_overlaps.append(overlap_ratio)
+
+            if region_overlaps:
+                pro_scores.append(np.mean(region_overlaps))
+
+        return float(np.mean(pro_scores)) if pro_scores else 0.0
 
     def get_model(self, with_evaluator: bool = True):
         """Create PatchCore model with optional evaluator.
@@ -342,7 +381,7 @@ class PatchCoreTrainer:
         return self
 
     def test(self, dataset: str, category: str) -> dict:
-        """Evaluate model on test set. Returns metrics dict including AUPRO."""
+        """Evaluate model on test set. Returns metrics dict including PRO."""
         ckpt_path = self.get_ckpt_path(dataset, category)
 
         if ckpt_path is None:
@@ -351,23 +390,55 @@ class PatchCoreTrainer:
 
         # Load model from checkpoint
         model = Patchcore.load_from_checkpoint(str(ckpt_path))
-
-        # Replace evaluator with one that includes AUPRO
         model.evaluator = self.get_evaluator()
 
         dm_kwargs = self.get_datamodule_kwargs()
         dm_kwargs["include_mask"] = True
         datamodule = self.loader.get_datamodule(dataset, category, **dm_kwargs)
 
+        # Run test for basic metrics (AUROC, F1)
         engine = self.get_engine(dataset, category, stage="test")
         results = engine.test(datamodule=datamodule, model=model)
+
+        metrics = results[0] if results else {}
+
+        # Compute PRO separately using predictions
+        if not getattr(self, "skip_aupro", False):
+            try:
+                engine_pred = self.get_engine(dataset, category, stage="predict")
+                predictions = engine_pred.predict(datamodule=datamodule, model=model)
+
+                # Collect anomaly maps and gt masks
+                preds_list = []
+                targets_list = []
+                for batch in predictions:
+                    if "anomaly_map" in batch and batch["anomaly_map"] is not None:
+                        for i in range(len(batch["anomaly_map"])):
+                            amap = batch["anomaly_map"][i].cpu().numpy()
+                            if amap.ndim == 3:
+                                amap = amap[0]  # Remove channel dim
+                            preds_list.append(amap)
+
+                            if "gt_mask" in batch and batch["gt_mask"] is not None:
+                                gt = batch["gt_mask"][i].cpu().numpy()
+                                if gt.ndim == 3:
+                                    gt = gt[0]
+                                targets_list.append(gt)
+
+                if preds_list and targets_list:
+                    preds_arr = np.array(preds_list)
+                    targets_arr = np.array(targets_list)
+                    pro_score = self.compute_pro(preds_arr, targets_arr, num_thresholds=50)
+                    metrics["PRO"] = pro_score
+
+                del engine_pred
+            except Exception as e:
+                print(f"  PRO computation failed: {e}")
 
         del engine, model, datamodule
         self.cleanup_memory()
 
-        if results and len(results) > 0:
-            return results[0]
-        return {}
+        return metrics
 
     def predict(self, dataset: str, category: str, save_json: bool = None):
         ckpt_path = self.get_ckpt_path(dataset, category)
@@ -511,23 +582,23 @@ class PatchCoreTrainer:
             # Print metrics
             img_auroc = metrics.get("image_AUROC", 0)
             pixel_auroc = metrics.get("pixel_AUROC", 0)
-            aupro = metrics.get("AUPRO", 0)
-            pbar.set_postfix_str(f"I:{img_auroc:.3f} P:{pixel_auroc:.3f} ({elapsed:.1f}s)")
+            pro = metrics.get("PRO", 0)
+            pbar.set_postfix_str(f"I:{img_auroc:.3f} P:{pixel_auroc:.3f} PRO:{pro:.3f} ({elapsed:.1f}s)")
 
         # Print summary
         if all_results:
             print("\n" + "=" * 70)
-            print(f"{'Category':<35} {'I-AUROC':>10} {'P-AUROC':>10} {'AUPRO':>10}")
+            print(f"{'Category':<35} {'I-AUROC':>10} {'P-AUROC':>10} {'PRO':>10}")
             print("=" * 70)
             for key, metrics in all_results.items():
                 print(f"{key:<35} {metrics.get('image_AUROC', 0):>10.4f} "
-                      f"{metrics.get('pixel_AUROC', 0):>10.4f} {metrics.get('AUPRO', 0):>10.4f}")
+                      f"{metrics.get('pixel_AUROC', 0):>10.4f} {metrics.get('PRO', 0):>10.4f}")
             print("=" * 70)
 
             # Average
             avg_img = sum(m.get("image_AUROC", 0) for m in all_results.values()) / len(all_results)
             avg_pix = sum(m.get("pixel_AUROC", 0) for m in all_results.values()) / len(all_results)
-            avg_pro = sum(m.get("AUPRO", 0) for m in all_results.values()) / len(all_results)
+            avg_pro = sum(m.get("PRO", 0) for m in all_results.values()) / len(all_results)
             print(f"{'Average':<35} {avg_img:>10.4f} {avg_pix:>10.4f} {avg_pro:>10.4f}")
 
         return all_results
