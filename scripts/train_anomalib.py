@@ -344,18 +344,21 @@ class PatchCoreTrainer:
 
     def test(self, dataset: str, category: str) -> dict:
         """Evaluate model on test set. Returns metrics dict."""
-        model = self.get_model()
-        dm_kwargs = self.get_datamodule_kwargs()
-        dm_kwargs["include_mask"] = True
-        datamodule = self.loader.get_datamodule(dataset, category, **dm_kwargs)
         ckpt_path = self.get_ckpt_path(dataset, category)
 
         if ckpt_path is None:
             print(f"  No checkpoint found for {dataset}/{category}")
             return {}
 
+        # Load model directly from checkpoint to preserve original evaluator
+        model = Patchcore.load_from_checkpoint(str(ckpt_path))
+
+        dm_kwargs = self.get_datamodule_kwargs()
+        dm_kwargs["include_mask"] = True
+        datamodule = self.loader.get_datamodule(dataset, category, **dm_kwargs)
+
         engine = self.get_engine(dataset, category, stage="test")
-        results = engine.test(datamodule=datamodule, model=model, ckpt_path=ckpt_path)
+        results = engine.test(datamodule=datamodule, model=model)
 
         del engine, model, datamodule
         self.cleanup_memory()
@@ -365,14 +368,21 @@ class PatchCoreTrainer:
         return {}
 
     def predict(self, dataset: str, category: str, save_json: bool = None):
-        model = self.get_model()
+        ckpt_path = self.get_ckpt_path(dataset, category)
+
+        if ckpt_path is None:
+            print(f"  No checkpoint found for {dataset}/{category}")
+            return []
+
+        # Load model directly from checkpoint
+        model = Patchcore.load_from_checkpoint(str(ckpt_path))
+
         dm_kwargs = self.get_datamodule_kwargs()
         dm_kwargs["include_mask"] = True
         datamodule = self.loader.get_datamodule(dataset, category, **dm_kwargs)
-        ckpt_path = self.get_ckpt_path(dataset, category)
 
         engine = self.get_engine(dataset, category, stage="predict")
-        predictions = engine.predict(datamodule=datamodule, model=model, ckpt_path=ckpt_path)
+        predictions = engine.predict(datamodule=datamodule, model=model)
 
         if save_json is None:
             save_json = self.output_config.get("save_json", False)
