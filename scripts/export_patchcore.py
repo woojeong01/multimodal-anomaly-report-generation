@@ -110,15 +110,84 @@ def find_patchcore_checkpoints(
     return checkpoints
 
 
+class PatchCoreONNXWrapper(torch.nn.Module):
+    """Wrapper for PatchCore model that includes memory bank for ONNX export."""
+
+    def __init__(self, model, input_size: Tuple[int, int]):
+        super().__init__()
+        self.model = model
+        self.input_size = input_size
+
+        # Get the feature extractor and memory bank from anomalib model
+        if hasattr(model, "model"):
+            inner_model = model.model
+        else:
+            inner_model = model
+
+        # Copy feature extractor
+        self.feature_extractor = inner_model.feature_extractor
+        self.feature_pooler = inner_model.feature_pooler
+
+        # Register memory bank as buffer (will be included in ONNX)
+        memory_bank = inner_model.memory_bank.clone()
+        self.register_buffer("memory_bank", memory_bank)
+
+        # Get anomaly map generator settings
+        self.anomaly_map_generator = inner_model.anomaly_map_generator
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward pass that computes anomaly map and score.
+
+        Args:
+            x: Input image tensor [B, 3, H, W]
+
+        Returns:
+            anomaly_map: [B, 1, H, W]
+            pred_score: [B]
+        """
+        batch_size = x.shape[0]
+
+        # Extract features
+        features = self.feature_extractor(x)
+        features = self.feature_pooler(features)
+
+        # Reshape features for distance computation
+        # features: [B, C, H, W] -> [B*H*W, C]
+        b, c, h, w = features.shape
+        features_flat = features.permute(0, 2, 3, 1).reshape(-1, c)
+
+        # Compute distances to memory bank
+        # memory_bank: [N, C]
+        # distances: [B*H*W, N]
+        distances = torch.cdist(features_flat, self.memory_bank, p=2)
+
+        # Get minimum distance for each patch
+        min_distances, _ = distances.min(dim=1)  # [B*H*W]
+
+        # Reshape to anomaly map
+        anomaly_map = min_distances.reshape(b, 1, h, w)
+
+        # Upsample to input size
+        anomaly_map = torch.nn.functional.interpolate(
+            anomaly_map,
+            size=self.input_size,
+            mode="bilinear",
+            align_corners=False,
+        )
+
+        # Compute anomaly score (max of anomaly map)
+        pred_score = anomaly_map.reshape(batch_size, -1).max(dim=1)[0]
+
+        return anomaly_map, pred_score
+
+
 def export_to_onnx(
     checkpoint_path: Path,
     output_path: Path,
     input_size: Tuple[int, int] = (224, 224),
     opset_version: int = 14,
 ) -> bool:
-    """Export PatchCore checkpoint to ONNX.
-
-    Uses anomalib v2.0+ Engine.export() API with fallback to manual export.
+    """Export PatchCore checkpoint to ONNX with memory bank included.
 
     Args:
         checkpoint_path: Path to .ckpt file
@@ -135,98 +204,69 @@ def export_to_onnx(
         print(f"  Loading checkpoint: {checkpoint_path}")
         model = Patchcore.load_from_checkpoint(str(checkpoint_path), map_location="cpu")
         model.eval()
-        model = model.cpu()  # Ensure model is on CPU for export
+        model = model.cpu()
+
+        # Check memory bank size
+        if hasattr(model, "model") and hasattr(model.model, "memory_bank"):
+            memory_bank = model.model.memory_bank
+            print(f"  Memory bank shape: {memory_bank.shape}")
+            memory_mb = memory_bank.numel() * 4 / 1024 / 1024  # float32 = 4 bytes
+            print(f"  Memory bank size: {memory_mb:.1f} MB")
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-
         print(f"  Exporting to ONNX: {output_path}")
 
-        exported = False
-
-        # Method 1: Use Engine.export() (anomalib v2.0+ recommended)
+        # Create wrapper model with memory bank
         try:
-            from anomalib.engine import Engine
+            wrapper = PatchCoreONNXWrapper(model, input_size)
+            wrapper.eval()
 
-            engine = Engine()
-            engine.export(
-                model=model,
-                export_type="onnx",
-                export_root=str(output_path.parent),
-                input_size=input_size,
-                ckpt_path=str(checkpoint_path),
+            dummy_input = torch.randn(1, 3, input_size[0], input_size[1])
+
+            # Test forward pass
+            with torch.no_grad():
+                anomaly_map, pred_score = wrapper(dummy_input)
+                print(f"  Test output - anomaly_map: {anomaly_map.shape}, pred_score: {pred_score.shape}")
+
+            # Export to ONNX
+            torch.onnx.export(
+                wrapper,
+                dummy_input,
+                str(output_path),
+                opset_version=opset_version,
+                input_names=["input"],
+                output_names=["anomaly_map", "pred_score"],
+                dynamic_axes={
+                    "input": {0: "batch_size"},
+                    "anomaly_map": {0: "batch_size"},
+                    "pred_score": {0: "batch_size"},
+                },
             )
-            # Engine exports to export_root/weights/onnx/model.onnx
-            engine_output = output_path.parent / "weights" / "onnx" / "model.onnx"
-            if engine_output.exists():
-                # Move to our desired location
-                import shutil
-                shutil.move(str(engine_output), str(output_path))
-                # Clean up engine's directory structure
-                shutil.rmtree(output_path.parent / "weights", ignore_errors=True)
-                exported = True
-                print(f"  Exported via Engine.export()")
-        except Exception as e:
-            print(f"  Engine.export() failed: {e}")
 
-        # Method 2: Use model.to_onnx() (anomalib v1.x compatible)
-        if not exported and hasattr(model, "to_onnx"):
-            try:
-                model.to_onnx(
-                    export_path=output_path,
-                    input_size=input_size,
-                )
-                exported = True
-                print(f"  Exported via model.to_onnx()")
-            except Exception as e:
-                print(f"  model.to_onnx() failed: {e}")
+            # Verify file size (should be > 1MB if memory bank included)
+            file_size_mb = output_path.stat().st_size / 1024 / 1024
+            print(f"  ONNX file size: {file_size_mb:.1f} MB")
 
-        # Method 3: Manual torch.onnx.export (fallback)
-        if not exported:
-            try:
-                dummy_input = torch.randn(1, 3, input_size[0], input_size[1])
+            if file_size_mb < 1:
+                print(f"  Warning: File size too small, memory bank may not be included")
 
-                # Get the torch model
-                if hasattr(model, "model"):
-                    export_model = model.model
-                else:
-                    export_model = model
-
-                export_model.eval()
-
-                torch.onnx.export(
-                    export_model,
-                    dummy_input,
-                    str(output_path),
-                    opset_version=opset_version,
-                    input_names=["input"],
-                    output_names=["anomaly_map", "pred_score"],
-                    dynamic_axes={
-                        "input": {0: "batch_size"},
-                        "anomaly_map": {0: "batch_size"},
-                        "pred_score": {0: "batch_size"},
-                    },
-                )
-                exported = True
-                print(f"  Exported via torch.onnx.export()")
-            except Exception as e:
-                print(f"  Manual export failed: {e}")
-
-        if exported:
             # Verify the exported model
             try:
                 import onnx
                 onnx_model = onnx.load(str(output_path))
                 onnx.checker.check_model(onnx_model)
                 print(f"  Success! Model verified.")
-                return True
             except ImportError:
                 print(f"  Success! (onnx package not available for verification)")
-                return True
             except Exception as e:
                 print(f"  Warning: Model verification failed: {e}")
-                return True
-        else:
-            print(f"  Failed to export")
+
+            return True
+
+        except Exception as e:
+            print(f"  Wrapper export failed: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     except Exception as e:
