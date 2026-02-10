@@ -119,8 +119,12 @@ class PatchCoreTrainer:
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
 
-    def get_evaluator(self):
-        """Create Evaluator with metrics including AUPRO."""
+    def get_evaluator(self, fast_aupro: bool = True):
+        """Create Evaluator with metrics including AUPRO.
+
+        Args:
+            fast_aupro: If True, use fewer thresholds for faster AUPRO computation
+        """
         from anomalib.metrics import AUROC, F1Score, AUPRO
         from anomalib.metrics.evaluator import Evaluator
 
@@ -128,13 +132,21 @@ class PatchCoreTrainer:
             AUROC(fields=["pred_score", "gt_label"], prefix="image_"),
             F1Score(fields=["pred_label", "gt_label"], prefix="image_", strict=False),
         ]
+
         test_metrics = [
             AUROC(fields=["pred_score", "gt_label"], prefix="image_"),
             F1Score(fields=["pred_label", "gt_label"], prefix="image_"),
             AUROC(fields=["anomaly_map", "gt_mask"], prefix="pixel_", strict=False),
             F1Score(fields=["pred_mask", "gt_mask"], prefix="pixel_", strict=False),
-            AUPRO(fields=["anomaly_map", "gt_mask"], strict=False),
         ]
+
+        # Add AUPRO unless skipped
+        if not getattr(self, "skip_aupro", False):
+            aupro_kwargs = {"fields": ["anomaly_map", "gt_mask"], "strict": False}
+            if fast_aupro:
+                aupro_kwargs["num_thresholds"] = 50
+            test_metrics.append(AUPRO(**aupro_kwargs))
+
         return Evaluator(val_metrics=val_metrics, test_metrics=test_metrics)
 
     def get_model(self, with_evaluator: bool = True):
@@ -547,9 +559,11 @@ def main():
     parser.add_argument("--dataset", type=str, default=None)
     parser.add_argument("--category", type=str, default=None)
     parser.add_argument("--save-json", action="store_true")
+    parser.add_argument("--no-aupro", action="store_true", help="Skip AUPRO metric (faster)")
     args = parser.parse_args()
 
     trainer = PatchCoreTrainer(config_path=args.config)
+    trainer.skip_aupro = args.no_aupro  # Flag for skipping AUPRO
 
     if args.mode == "fit":
         if args.dataset and args.category:
