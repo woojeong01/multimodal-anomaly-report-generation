@@ -1,9 +1,7 @@
 """Anomaly detection module.
 
-Provides unified interface for various anomaly detection models:
-- EfficientAD (ONNX)
-- PatchCore (planned)
-- UniAD (planned)
+Provides unified interface for anomaly detection models:
+- PatchCore (ONNX)
 """
 from .base import (
     AnomalyResult,
@@ -11,8 +9,7 @@ from .base import (
     PerClassAnomalyModel,
     UnifiedAnomalyModel,
 )
-from .dummy_edge import DummyEdgeAnomaly
-from .efficientad_onnx import EfficientADOnnx, EfficientADModelManager
+from .patchcore_onnx import PatchCoreOnnx, PatchCoreModelManager
 
 __all__ = [
     # Base classes
@@ -20,8 +17,7 @@ __all__ = [
     "BaseAnomalyModel",
     "PerClassAnomalyModel",
     "UnifiedAnomalyModel",
-    # Implementations
-    "DummyEdgeAnomaly",
-    "EfficientADOnnx",
-    "EfficientADModelManager",
+    # PatchCore
+    "PatchCoreOnnx",
+    "PatchCoreModelManager",
 ]
