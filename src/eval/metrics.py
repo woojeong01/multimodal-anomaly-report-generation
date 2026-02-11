@@ -155,20 +155,9 @@ def compute_anomaly_metrics(
         y_true = np.concatenate([b.gt_label.cpu().numpy() for b in batches])
         y_score = np.concatenate([b.pred_score.cpu().numpy() for b in batches])
 
-        # Image-level threshold
-        img_thresh = 0.5
-        if image_thresholds and category in image_thresholds:
-            img_thresh = image_thresholds[category]["threshold"]
-
-        y_pred = (y_score >= img_thresh).astype(int)
-
         metrics = {
             "Category": category,
             "Image_AUROC": round(roc_auc_score(y_true, y_score), 4),
-            "Precision": round(precision_score(y_true, y_pred, zero_division=0), 4),
-            "Recall": round(recall_score(y_true, y_pred, zero_division=0), 4),
-            "F1": round(f1_score(y_true, y_pred, zero_division=0), 4),
-            "Image_Threshold": round(img_thresh, 4),
             "N_samples": len(y_true),
         }
 
@@ -205,7 +194,6 @@ def compute_anomaly_metrics(
             metrics["IoU"] = round(
                 jaccard_score(gt_flat, pred_binary.flatten().cpu().numpy(), average="binary", zero_division=0), 4
             )
-            metrics["Pixel_Threshold"] = round(px_thresh, 4)
 
         results.append(metrics)
 

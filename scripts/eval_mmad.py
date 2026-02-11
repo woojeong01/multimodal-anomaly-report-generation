@@ -61,7 +61,7 @@ def main() -> None:
         help="Override runtime_config path (otherwise uses config yaml's runtime_config).",
     )
 
-    # --- new: override runtime paths (via env vars used by runtime.yaml) ---
+    # --- new: override runtime paths (via env vars used by anomaly.yaml) ---
     ap.add_argument("--data-root", type=str, default=None, help="Override MMAD data root (MMAD_DATA_ROOT).")
     ap.add_argument("--mmad-json", type=str, default=None, help="Override mmad.json path (MMAD_JSON_PATH).")
     ap.add_argument("--artifact-root", type=str, default=None, help="Override artifact output root (ARTIFACT_ROOT).")
@@ -91,7 +91,7 @@ def main() -> None:
     runtime_config_path = args.runtime_config if args.runtime_config is not None else cfg["runtime_config"]
     runtime_config_path = _resolve_path_maybe_relative(runtime_config_path)
 
-    # Apply path overrides as env vars (so runtime.yaml stays unchanged)
+    # Apply path overrides as env vars (so anomaly.yaml stays unchanged)
     _set_env_if_provided("MMAD_DATA_ROOT", args.data_root)
     _set_env_if_provided("MMAD_JSON_PATH", args.mmad_json)
     _set_env_if_provided("ARTIFACT_ROOT", args.artifact_root)

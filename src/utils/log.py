@@ -1,9 +1,11 @@
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from .path import get_logs_dir
+
+KST = timezone(timedelta(hours=9))
 
 
 def setup_logger(
@@ -42,7 +44,7 @@ def setup_logger(
             log_dir.mkdir(parents=True, exist_ok=True)
 
         # 로그 파일명 생성
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
         log_file = log_dir / f"{log_prefix}_{timestamp}.log"
 
         # 파일 핸들러
@@ -51,6 +53,7 @@ def setup_logger(
         file_formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
+        file_formatter.converter = lambda *args: datetime.now(KST).timetuple()
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
 

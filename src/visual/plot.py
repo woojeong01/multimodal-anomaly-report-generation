@@ -472,13 +472,17 @@ def visualize_predictions_from_runner(
         subset = Subset(test_dataset, selected_indices)
         subset_loader = DataLoader(subset, batch_size=n_select, shuffle=False, num_workers=0, collate_fn=collate_items)
 
-        # 5. 모델 로드
+        # 5. 모델 로드 (load_from_checkpoint으로 memory bank 등 전체 복원)
         model = runner.get_model()
         ckpt_path = runner.get_ckpt_path(dataset, category)
 
-        if ckpt_path:
-            checkpoint = torch.load(ckpt_path, map_location=runner.device, weights_only=False)
-            model.load_state_dict(checkpoint["state_dict"], strict=False)
+        if ckpt_path and ckpt_path.suffix == ".pt":
+            pt_data = torch.load(ckpt_path, map_location=runner.device, weights_only=False)
+            model.model.memory_bank = pt_data["memory_bank"].to(runner.device)
+            model.model.coreset_sampling_ratio = pt_data.get("coreset_ratio", 0.1)
+            model.model.num_neighbors = pt_data.get("n_neighbors", 9)
+        elif ckpt_path:
+            model = model.__class__.load_from_checkpoint(str(ckpt_path))
 
         model.eval()
         model.to(runner.device)
@@ -535,7 +539,7 @@ def visualize_single_prediction(
     dataset: str = None,
     category: str = None,
     sample_idx: int = 0,
-    config_path: str = "configs/runtime.yaml",
+    config_path: str = "configs/anomaly.yaml",
     figsize: tuple = (16, 4),
     show: bool = True,
 ):
@@ -578,6 +582,7 @@ def visualize_single_prediction(
     runner.data_root = P(config["data"]["root"])
     runner.output_root = P(config["data"]["output_root"])
     runner.output_config = config.get("output", {})
+    runner.predict_config = config.get("predict", {})
     runner.engine_config = config.get("engine", {})
 
     from src.utils.device import get_device
