@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import base64
+import json
+import logging
 import re
 import time
 from abc import ABC, abstractmethod
@@ -10,6 +12,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import cv2
+
+logger = logging.getLogger(__name__)
 
 # MMAD paper's instruction prompt
 INSTRUCTION = '''
@@ -27,10 +31,10 @@ Finally, you should output a list of answer, such as:
 INSTRUCTION_WITH_AD = '''
 You are an industrial inspector who checks products by images. You should judge whether there is a defect in the query image and answer the questions about it.
 
-An anomaly detection model has analyzed this image and provided the following information:
+An anomaly detection model has pre-analyzed this image. Here is the result:
 {ad_info}
 
-Use this information along with your visual analysis to answer the questions.
+Consider this as a reference, but rely primarily on your own visual analysis. The model can make mistakes.
 Answer with the option's letter from the given choices directly!
 
 Finally, you should output a list of answer, such as:
@@ -40,14 +44,99 @@ Finally, you should output a list of answer, such as:
 ...
 '''
 
+# ── Report generation prompts ──────────────────────────────────────────
+
+REPORT_PROMPT = '''You are an expert industrial quality inspector.
+Look at this product image carefully and determine if there are any defects or anomalies.
+Pay close attention to: surface damage, deformation, missing parts, wrong positioning,
+opened packaging, contamination, cracks, scratches, or any other abnormality.
+
+Product category: {category}
+
+If the product looks perfect and normal, set "is_anomaly" to false.
+If there is ANY abnormality, set "is_anomaly" to true.
+
+Respond in JSON format ONLY:
+{{
+  "is_anomaly": true or false,
+  "report": {{
+    "anomaly_type": "type of defect or none",
+    "severity": "low/medium/high/none",
+    "location": "where the defect is or none",
+    "description": "detailed defect description or normal product",
+    "confidence": 0.0 to 1.0,
+    "recommendation": "action recommendation"
+  }},
+  "summary": {{
+    "summary": "one sentence inspection summary",
+    "risk_level": "low/medium/high/none"
+  }}
+}}'''
+
+REPORT_PROMPT_WITH_AD = '''You are an expert industrial quality inspector.
+Look at this product image carefully and determine if there are any defects or anomalies.
+Pay close attention to: surface damage, deformation, missing parts, wrong positioning,
+opened packaging, contamination, cracks, scratches, or any other abnormality.
+
+Product category: {category}
+
+An anomaly detection model has pre-analyzed this image:
+{ad_info}
+
+Consider this as a reference, but rely primarily on your own visual analysis. The model can make mistakes.
+
+If the product looks perfect and normal, set "is_anomaly" to false.
+If there is ANY abnormality, set "is_anomaly" to true.
+
+Respond in JSON format ONLY:
+{{
+  "is_anomaly": true or false,
+  "report": {{
+    "anomaly_type": "type of defect or none",
+    "severity": "low/medium/high/none",
+    "location": "where the defect is or none",
+    "description": "detailed defect description or normal product",
+    "confidence": 0.0 to 1.0,
+    "recommendation": "action recommendation"
+  }},
+  "summary": {{
+    "summary": "one sentence inspection summary",
+    "risk_level": "low/medium/high/none"
+  }}
+}}'''
+
+
+def _parse_llm_json(text: str) -> Optional[dict]:
+    """Extract and parse JSON from LLM response text.
+
+    Handles common LLM quirks: escaped underscores, markdown fences, etc.
+    """
+    # Fix LLaVA-style escaped underscores
+    cleaned = text.replace("\\_", "_")
+
+    # Try to extract JSON object
+    json_match = re.search(r'\{[\s\S]*\}', cleaned)
+    if json_match:
+        try:
+            return json.loads(json_match.group())
+        except json.JSONDecodeError:
+            pass
+    return None
+
+
+def _normalize_decision(value: Any) -> bool:
+    """Normalize various LLM is_anomaly outputs to bool."""
+    if isinstance(value, bool):
+        return value
+    s = str(value).strip().lower()
+    return s in ("true", "1", "yes", "anomaly", "이상", "불량", "defect", "bad", "abnormal")
+
 
 def format_ad_info(ad_info: dict) -> str:
-    """Format AD model output as a string for LLM prompt.
+    """Format AD model output as a concise natural language summary.
 
     Args:
         ad_info: Dictionary containing AD model predictions.
-                 Expected keys may include: anomaly_score, is_anomaly,
-                 defect_location, defect_type, bbox, mask_path, etc.
 
     Returns:
         Formatted string describing the AD model's findings.
@@ -55,9 +144,30 @@ def format_ad_info(ad_info: dict) -> str:
     if not ad_info:
         return "No anomaly detection information available."
 
-    import json
-    # Return JSON string for flexibility - LLM can interpret structured data
-    return json.dumps(ad_info, indent=2, ensure_ascii=False)
+    lines = []
+
+    # Anomaly score & judgment
+    score = ad_info.get("anomaly_score")
+    is_anomaly = ad_info.get("is_anomaly")
+    if score is not None:
+        status = "ANOMALOUS" if is_anomaly else "NORMAL"
+        lines.append(f"- Anomaly detection result: {status} (score: {score:.2f})")
+
+    # Defect location
+    loc = ad_info.get("defect_location", {})
+    if loc.get("has_defect"):
+        region = loc.get("region", "unknown")
+        area = loc.get("area_ratio", 0)
+        lines.append(f"- Defect location: {region}")
+        if area > 0:
+            lines.append(f"- Defect area: {area * 100:.1f}% of the image")
+    elif loc and not loc.get("has_defect"):
+        lines.append("- No localized defect detected")
+
+    if not lines:
+        return "No anomaly detection information available."
+
+    return "\n".join(lines)
 
 
 def get_mime_type(image_path: str) -> str:
@@ -289,3 +399,77 @@ class BaseLLMClient(ABC):
     def extract_response_text(self, response: dict) -> str:
         """Extract text content from API response. Must be implemented by subclass."""
         pass
+
+    # ── Report generation ──────────────────────────────────────────────
+
+    def build_report_payload(
+        self,
+        image_path: str,
+        category: str,
+        ad_info: Optional[Dict] = None,
+    ) -> dict:
+        """Build payload for report generation.
+
+        Subclasses may override this for model-specific formatting.
+        Default implementation uses build_payload with an empty questions list
+        and the report prompt as a single text question.
+        """
+        if ad_info:
+            prompt_text = REPORT_PROMPT_WITH_AD.format(
+                category=category,
+                ad_info=format_ad_info(ad_info),
+            )
+        else:
+            prompt_text = REPORT_PROMPT.format(category=category)
+
+        questions = [{"type": "text", "text": prompt_text}]
+        return self.build_payload(image_path, [], questions)
+
+    def generate_report(
+        self,
+        image_path: str,
+        category: str,
+        ad_info: Optional[Dict] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Generate a structured inspection report for a single image.
+
+        Args:
+            image_path: Path to the product image.
+            category: Product category string (e.g. "cigarette_box").
+            ad_info: Optional dict with AD model results (score, is_anomaly, etc.).
+
+        Returns:
+            Dict with keys: is_anomaly_LLM, llm_report, llm_summary.
+        """
+        payload = self.build_report_payload(image_path, category, ad_info)
+
+        t0 = time.time()
+        response = self.send_request(payload)
+        inference_time = time.time() - t0
+
+        # Default fallback
+        result: Dict[str, Any] = {
+            "is_anomaly_LLM": None,
+            "llm_report": None,
+            "llm_summary": None,
+            "llm_inference_duration": round(inference_time, 3),
+        }
+
+        if response is None:
+            logger.warning("LLM returned no response for %s", image_path)
+            return result
+
+        text = self.extract_response_text(response)
+        parsed = _parse_llm_json(text)
+
+        if parsed is None:
+            logger.warning("Failed to parse JSON from LLM response: %s", text[:200])
+            result["llm_report"] = {"raw_response": text}
+            return result
+
+        result["is_anomaly_LLM"] = _normalize_decision(parsed.get("is_anomaly", False))
+        result["llm_report"] = parsed.get("report", parsed)
+        result["llm_summary"] = parsed.get("summary")
+
+        return result

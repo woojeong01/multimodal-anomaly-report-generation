@@ -1,6 +1,7 @@
-"""InternVL2 client for MMAD evaluation - HuggingFace transformers."""
+"""InternVL client for MMAD evaluation - HuggingFace transformers."""
 from __future__ import annotations
 
+import contextlib
 import logging
 import math
 from typing import Dict, List, Optional, Tuple
@@ -13,6 +14,26 @@ from torchvision.transforms.functional import InterpolationMode
 from .base import BaseLLMClient, INSTRUCTION, INSTRUCTION_WITH_AD, format_ad_info
 
 logger = logging.getLogger(__name__)
+
+
+@contextlib.contextmanager
+def _patch_linspace_for_meta():
+    """Workaround: InternVL calls .item() on torch.linspace() during __init__.
+
+    When transformers initializes with meta tensors, linspace creates meta
+    tensors where .item() fails. This forces linspace to use CPU.
+    """
+    _orig = torch.linspace
+
+    def _safe_linspace(*args, **kwargs):
+        kwargs.setdefault("device", "cpu")
+        return _orig(*args, **kwargs)
+
+    torch.linspace = _safe_linspace
+    try:
+        yield
+    finally:
+        torch.linspace = _orig
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -97,17 +118,12 @@ def load_image(image_file: str, input_size: int = 448, max_num: int = 12):
 
 
 class InternVLClient(BaseLLMClient):
-    """InternVL2 client using HuggingFace transformers.
+    """InternVL client using HuggingFace transformers.
 
     Supported models:
-    - OpenGVLab/InternVL2-1B
-    - OpenGVLab/InternVL2-2B
-    - OpenGVLab/InternVL2-4B
-    - OpenGVLab/InternVL2-8B
-    - OpenGVLab/InternVL2_5-1B
-    - OpenGVLab/InternVL2_5-2B
-    - OpenGVLab/InternVL2_5-4B
-    - OpenGVLab/InternVL2_5-8B
+    - OpenGVLab/InternVL2-{1,2,4,8}B
+    - OpenGVLab/InternVL2_5-{1,2,4,8}B
+    - OpenGVLab/InternVL3_5-8B
     """
 
     NUM_LAYERS = {
@@ -116,6 +132,7 @@ class InternVLClient(BaseLLMClient):
         'InternVL2-Llama3-76B': 80,
         'InternVL2_5-1B': 24, 'InternVL2_5-2B': 24, 'InternVL2_5-4B': 32,
         'InternVL2_5-8B': 32,
+        'InternVL3_5-8B': 32,
     }
 
     def __init__(
@@ -198,26 +215,24 @@ class InternVLClient(BaseLLMClient):
 
         torch.set_grad_enabled(False)
 
-        # Note: InternVL2 custom code has issues with low_cpu_mem_usage=True
-        # due to calling .item() during initialization. We disable it.
+        # InternVL custom code calls .item() during __init__,
+        # which fails with meta tensors when low_cpu_mem_usage=True
+        load_kwargs = dict(
+            torch_dtype=torch_dtype,
+            low_cpu_mem_usage=False,
+            trust_remote_code=True,
+        )
+
         if self.num_gpus > 1:
-            device_map = self._split_model(model_name)
+            load_kwargs["device_map"] = self._split_model(model_name)
+
+        with _patch_linspace_for_meta():
             self._model = AutoModel.from_pretrained(
-                self.model_path,
-                torch_dtype=torch_dtype,
-                low_cpu_mem_usage=False,  # Must be False for InternVL2
-                trust_remote_code=True,
-                device_map=device_map
+                self.model_path, **load_kwargs
             ).eval()
-        else:
-            self._model = AutoModel.from_pretrained(
-                self.model_path,
-                torch_dtype=torch_dtype,
-                low_cpu_mem_usage=False,  # Must be False for InternVL2
-                trust_remote_code=True
-            ).eval()
-            if self.device == "cuda" and torch.cuda.is_available():
-                self._model = self._model.cuda()
+
+        if self.num_gpus <= 1 and self.device == "cuda" and torch.cuda.is_available():
+            self._model = self._model.cuda()
 
         self._tokenizer = AutoTokenizer.from_pretrained(
             self.model_path,

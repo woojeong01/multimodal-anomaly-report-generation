@@ -23,13 +23,10 @@ import os
 import random
 import subprocess
 import sys
-import tempfile
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
-
-import yaml
 
 from tqdm import tqdm
 
@@ -102,44 +99,11 @@ def load_ad_predictions(ad_output_path: str) -> dict:
     return predictions
 
 
-def _build_ad_config(cfg: ExperimentConfig, data_root: str, mmad_json: str) -> str:
-    """Load AD config and override data paths from experiment config.
-
-    Returns path to a temporary config YAML with correct paths.
-    """
-    ad_config_path = cfg.ad_config or "patchcore_training/config/config.yaml"
-    if not Path(ad_config_path).exists():
-        print(f"Error: AD config not found: {ad_config_path}")
-        sys.exit(1)
-
-    with open(ad_config_path, "r", encoding="utf-8") as f:
-        ad_cfg = yaml.safe_load(f)
-
-    # Override paths from experiment config
-    ad_cfg.setdefault("data", {})
-    ad_cfg["data"]["root"] = data_root
-    ad_cfg["data"]["mmad_json"] = mmad_json
-
-    if cfg.ad_checkpoint_dir:
-        ad_cfg.setdefault("output", {})
-        ad_cfg["output"]["checkpoint_dir"] = cfg.ad_checkpoint_dir
-
-    # Write to temp file (same dir as output so it persists for debugging)
-    output_dir = Path(cfg.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    tmp_path = str(output_dir / f"_ad_config_{cfg.ad_model}.yaml")
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        yaml.dump(ad_cfg, f, default_flow_style=False, allow_unicode=True)
-
-    return tmp_path
-
-
 def run_ad_inference(cfg: ExperimentConfig, data_root: str, mmad_json: str) -> str:
-    """Run AD model inference and return the predictions JSON path.
+    """Run AD model inference using run_ad_inference_ckpt.py.
 
     If cfg.ad_output already points to an existing file, skip inference.
-    Otherwise run patchcore_training/scripts/inference.py via subprocess.
-    Data paths from experiment config are automatically passed to inference.
+    Otherwise run scripts/run_ad_inference_ckpt.py via subprocess.
     """
     # ad.output를 명시적으로 지정한 경우에만 스킵 (사용자가 의도적으로 재사용)
     if cfg.ad_output and Path(cfg.ad_output).exists():
@@ -151,36 +115,51 @@ def run_ad_inference(cfg: ExperimentConfig, data_root: str, mmad_json: str) -> s
     output_dir.mkdir(parents=True, exist_ok=True)
     ad_output = str(output_dir / f"{cfg.ad_model}_predictions.json")
 
-    # Build temp config with overridden data paths
-    tmp_config = _build_ad_config(cfg, data_root, mmad_json)
-
-    # Build inference command
-    inference_script = str(PROJ_ROOT / "patchcore_training" / "scripts" / "inference.py")
+    # Find inference script
+    inference_script = str(PROJ_ROOT / "scripts" / "run_ad_inference_ckpt.py")
     if not Path(inference_script).exists():
         print(f"Error: inference script not found: {inference_script}")
         sys.exit(1)
 
+    # Checkpoint dir
+    checkpoint_dir = cfg.ad_checkpoint_dir
+    if not checkpoint_dir:
+        print("Error: ad.checkpoint_dir is not set in experiment.yaml")
+        sys.exit(1)
+
+    # Build command
     cmd = [
         sys.executable, inference_script,
-        "--config", tmp_config,
+        "--checkpoint-dir", checkpoint_dir,
+        "--data-root", data_root,
+        "--mmad-json", mmad_json,
         "--output", ad_output,
     ]
 
-    if cfg.ad_thresholds and Path(cfg.ad_thresholds).exists():
-        cmd.extend(["--thresholds", cfg.ad_thresholds])
+    ad_config = cfg.ad_config or "configs/anomaly.yaml"
+    if Path(ad_config).exists():
+        cmd.extend(["--config", ad_config])
 
-    if cfg.max_images:
-        cmd.extend(["--max-images", str(cfg.max_images)])
+    if cfg.ad_thresholds is not None:
+        cmd.extend(["--threshold", str(cfg.ad_thresholds)])
 
+    if cfg.ad_version is not None:
+        cmd.extend(["--version", str(cfg.ad_version)])
+
+    device = "cuda"
+    cmd.extend(["--device", device])
+
+    version_str = f"v{cfg.ad_version}" if cfg.ad_version is not None else "latest"
     print("=" * 60)
-    print("Running AD Model Inference")
+    print("Running AD Model Inference (ckpt)")
     print("=" * 60)
-    print(f"Script:     {inference_script}")
-    print(f"Config:     {tmp_config} (paths overridden from experiment.yaml)")
-    print(f"Data root:  {data_root}")
-    print(f"MMAD JSON:  {mmad_json}")
-    print(f"Thresholds: {cfg.ad_thresholds or 'default'}")
-    print(f"Output:     {ad_output}")
+    print(f"Script:       {inference_script}")
+    print(f"Config:       {ad_config}")
+    print(f"Checkpoint:   {checkpoint_dir}")
+    print(f"Version:      {version_str}")
+    print(f"Data root:    {data_root}")
+    print(f"MMAD JSON:    {mmad_json}")
+    print(f"Output:       {ad_output}")
     print()
 
     # 실시간 출력 (버퍼링 없이 바로 표시)
@@ -257,9 +236,10 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
 
     template_type = "Similar_template" if cfg.similar_template else "Random_template"
     ad_suffix = f"_with_{cfg.ad_model}" if cfg.ad_model else ""
+    version_suffix = f"_v{cfg.ad_version}" if cfg.ad_model and cfg.ad_version is not None else ""
     llm_safe = cfg.llm.replace("/", "_").replace("\\", "_")
     img_count = f"_{len(image_paths)}img"
-    output_name = f"answers_{cfg.few_shot}_shot_{llm_safe}_{template_type}{ad_suffix}{img_count}"
+    output_name = f"answers_{cfg.few_shot}_shot_{llm_safe}_{template_type}{ad_suffix}{version_suffix}{img_count}"
     answers_json_path = output_dir / f"{output_name}.json"
 
     print("=" * 60)
@@ -399,8 +379,10 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
         "experiment_name": cfg.experiment_name,
         "llm": cfg.llm,
         "ad_model": cfg.ad_model,
+        "ad_version": cfg.ad_version,
         "few_shot": cfg.few_shot,
         "similar_template": cfg.similar_template,
+        "sample_per_folder": cfg.sample_per_folder,
         "max_images": cfg.max_images,
         "total_images": len(image_paths),
         "processed": processed,
@@ -409,7 +391,7 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
         "total_correct": total_correct,
         "accuracy": round(final_acc * 100, 2),
         "elapsed_seconds": round(elapsed, 1),
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(timezone(timedelta(hours=9))).isoformat(),
         "answers_file": str(answers_json_path),
     }
     with open(meta_path, "w", encoding="utf-8") as f:
@@ -445,6 +427,8 @@ def main():
                         help="Override AD model (null = no AD)")
     parser.add_argument("--ad-output", type=str, default=None,
                         help="Path to existing AD predictions JSON (skip inference)")
+    parser.add_argument("--ad-version", type=int, default=None,
+                        help="Override AD checkpoint version (null = latest)")
     parser.add_argument("--few-shot", type=int, default=None,
                         help="Override few-shot count")
     parser.add_argument("--max-images", type=int, default=None,
@@ -492,6 +476,8 @@ def main():
         cfg.ad_model = None if args.ad_model.lower() == "null" else args.ad_model
     if args.ad_output is not None:
         cfg.ad_output = args.ad_output
+    if args.ad_version is not None:
+        cfg.ad_version = args.ad_version
     if args.few_shot is not None:
         cfg.few_shot = args.few_shot
     if args.max_images is not None:

@@ -1,6 +1,6 @@
 # Experiment Runner System
 
-AD 모델(patchcore/winclip/efficientad)과 LLM(qwen/llava/gpt-4o/claude/gemini) 조합별 MMAD 평가를 자동화하는 시스템.
+AD 모델(patchcore)과 LLM(qwen/llava/internvl/gpt-4o/claude/gemini) 조합별 MMAD 평가를 자동화하는 시스템.
 YAML 설정에서 `ad_model`과 `llm` 두 줄만 바꾸면, AD 추론부터 LLM 평가까지 한 번에 실행되고 결과가 자동 저장된다.
 
 ---
@@ -52,13 +52,9 @@ src/
 
 scripts/
   run_experiment.py        # 메인 실험 러너 (AD 추론 + LLM 평가)
+  run_ad_inference_ckpt.py # AD 모델 추론 (anomalib .ckpt 체크포인트)
   compare_results.py       # 결과 비교 테이블
   eval_llm_baseline.py     # (수정됨) factory.py에서 import
-
-patchcore_training/
-  scripts/inference.py     # AD 모델 추론 스크립트 (run_experiment.py가 자동 호출)
-  config/config.yaml       # AD 모델 설정 (체크포인트 경로, 데이터셋 등)
-  config/thresholds.yaml   # 카테고리별 anomaly threshold
 
 outputs/eval/
   answers_*.json           # 실험 결과 (질문별 답변)
@@ -73,8 +69,8 @@ outputs/eval/
 ### `configs/experiment.yaml`
 
 ```yaml
-ad_model: patchcore     # patchcore | winclip | efficientad | null (AD 없이)
-llm: qwen               # qwen | llava | gpt-4o | claude | gemini | internvl | ...
+ad_model: patchcore     # patchcore | null (AD 없이)
+llm: qwen               # qwen | internvl | llava | gpt-4o | claude | gemini | ...
 
 eval:
   few_shot: 1            # few-shot 예제 수 (0~8)
@@ -88,9 +84,11 @@ eval:
 
 # AD model inference settings (ad_model이 null이 아닐 때 사용)
 ad:
-  config: patchcore_training/config/config.yaml   # inference.py 설정 파일
+  config: configs/anomaly.yaml                     # run_ad_inference_ckpt.py 설정 파일
   output: null                                     # 기존 예측 JSON (있으면 inference 스킵)
-  thresholds: patchcore_training/config/thresholds.yaml  # 카테고리별 threshold
+  threshold: 0.5                                   # anomaly threshold
+  checkpoint_dir: /path/to/checkpoints/patchcore_anomalib  # 체크포인트 루트
+  version: null                                    # 체크포인트 버전 (null = 최신, 1, 2, 3...)
 ```
 
 `max_image_size`는 `BaseLLMClient`에 전달되어, 이미지가 이 크기를 초과하면 비율을 유지한 채 리사이즈한다. 기본값은 `[512, 512]`.
@@ -114,6 +112,7 @@ YAML 수정 없이 CLI 인자로도 오버라이드 가능:
 | `--llm` | `llm` | `--llm gpt-4o` |
 | `--ad-model` | `ad_model` | `--ad-model patchcore` |
 | `--ad-output` | `ad.output` | `--ad-output output/predictions.json` |
+| `--ad-version` | `ad.version` | `--ad-version 2` |
 | `--few-shot` | `eval.few_shot` | `--few-shot 3` |
 | `--max-images` | `eval.max_images` | `--max-images 10` |
 | `--sample-per-folder` | `eval.sample_per_folder` | `--sample-per-folder 5` |
@@ -160,24 +159,24 @@ experiment.yaml: ad_model: patchcore
 
 ### AD 예측 JSON 형식
 
-`inference.py`가 생성하는 JSON (이미지당 1개):
+`run_ad_inference_ckpt.py`가 생성하는 JSON (이미지당 1개). 모델의 post_processor가 0~1로 정규화한 값:
 ```json
 {
   "image_path": "GoodsAD/cigarette_box/test/bad/001.jpg",
-  "anomaly_score": 3.14,
+  "anomaly_score": 0.87,
   "is_anomaly": true,
-  "threshold_used": 3.43,
   "defect_location": {
     "has_defect": true,
     "region": "center",
     "bbox": [100, 50, 200, 150],
-    "center": [150, 100],
-    "area_ratio": 0.12
+    "center": [0.75, 0.5],
+    "area_ratio": 0.12,
+    "confidence": 0.74
   },
-  "metadata": {
-    "dataset": "GoodsAD",
-    "class_name": "cigarette_box",
-    "model_type": "patchcore"
+  "map_stats": {
+    "max": 0.74,
+    "mean": 0.39,
+    "std": 0.11
   }
 }
 ```
@@ -186,35 +185,38 @@ experiment.yaml: ad_model: patchcore
 
 ### 체크포인트 구조
 
+anomalib `.ckpt` 형식. 버전 디렉토리(`v1`, `v2`, ...)로 관리된다.
+
 ```
-checkpoints/patchcore_224/
-  GoodsAD/
-    cigarette_box/model.pt
-    drink_bottle/model.pt
-    drink_can/model.pt
-    food_bottle/model.pt
-    food_box/model.pt
-    food_package/model.pt
-  MVTec-LOCO/
-    breakfast_box/model.pt
-    juice_bottle/model.pt
-    pushpins/model.pt
-    screw_bag/model.pt
+checkpoints/patchcore_anomalib/
+  Patchcore/
+    GoodsAD/
+      cigarette_box/
+        v1/model.ckpt
+        v2/model.ckpt    # 버전 추가 시 자동 인식
+      drink_bottle/
+        v1/model.ckpt
+      ...
+    MVTec-LOCO/
+      breakfast_box/
+        v1/model.ckpt
+      ...
 ```
 
-체크포인트 경로와 카테고리 목록은 `patchcore_training/config/config.yaml`에서 관리한다.
+- `ad.version: null` → 가장 높은 버전 자동 선택
+- `ad.version: 1` → v1 고정 사용
+- 카테고리 목록은 `configs/anomaly.yaml`에서 관리
 
-### 카테고리별 threshold
+### 첫 실행 시 참고사항
 
-`patchcore_training/config/thresholds.yaml`에 F1 최적화 기반 threshold가 정의되어 있다:
-```yaml
-global: 2.86
-categories:
-  GoodsAD/cigarette_box: 3.43
-  GoodsAD/drink_bottle: 2.77
-  MVTec-LOCO/breakfast_box: 2.80
-  ...
-```
+anomalib PatchCore는 backbone(ResNet 등)을 HuggingFace Hub에서 다운로드한다. **첫 실행 시 인터넷 연결이 필요**하며, 다운로드 후에는 로컬 캐시에 저장되어 이후에는 오프라인에서도 동작한다.
+
+Colab에서 `Failed to load model: ... cannot find the requested files in the local cache` 에러가 발생하면:
+1. 인터넷 연결 확인: `!curl -s -o /dev/null -w "%{http_code}" https://huggingface.co` → `200`
+2. 수동으로 backbone 캐시: 셀에서 `from anomalib.models import Patchcore; Patchcore.load_from_checkpoint("체크포인트경로", map_location="cpu")` 실행
+3. 캐시 완료 후 다시 `run_experiment.py` 실행
+
+`Warning: You are sending unauthenticated requests to the HF Hub` 경고는 무시해도 된다. backbone이 캐시되면 이후 실행에서는 표시되지 않는다.
 
 ---
 
@@ -235,16 +237,21 @@ categories:
 
 ### 로컬 모델 (HuggingFace)
 
-| 이름 | 모델 ID |
-|------|---------|
-| `qwen` | Qwen/Qwen2.5-VL-7B-Instruct |
-| `qwen-2b` | Qwen/Qwen2.5-VL-2B-Instruct |
-| `qwen3-vl-8b` | Qwen/Qwen3-VL-8B-Instruct |
-| `internvl` | OpenGVLab/InternVL2-8B |
-| `llava` | llava-hf/llava-1.5-7b-hf |
-| `llava-onevision` | llava-hf/llava-onevision-qwen2-7b-ov-hf |
+| 이름 | 모델 ID | 비고 |
+|------|---------|------|
+| `qwen` | Qwen/Qwen2.5-VL-7B-Instruct | |
+| `qwen-2b` | Qwen/Qwen2.5-VL-2B-Instruct | |
+| `qwen3-vl-8b` | Qwen/Qwen3-VL-8B-Instruct | |
+| `internvl` | OpenGVLab/InternVL3_5-8B | **기본값 (v3.5)** |
+| `internvl3.5-8b` | OpenGVLab/InternVL3_5-8B | internvl과 동일 |
+| `internvl2.5-8b` | OpenGVLab/InternVL2_5-8B | |
+| `internvl-8b` | OpenGVLab/InternVL2-8B | v2 |
+| `llava` | llava-hf/llava-1.5-7b-hf | |
+| `llava-onevision` | llava-hf/llava-onevision-qwen2-7b-ov-hf | |
 
 HuggingFace 모델 경로를 직접 지정할 수도 있다: `--llm Qwen/Qwen2.5-VL-2B-Instruct`
+
+> **InternVL3.5 참고:** `transformers>=4.52.1` 필요 (5.x는 호환 안 됨, `pip install transformers==4.52.4` 권장).
 
 ---
 
@@ -267,13 +274,15 @@ HuggingFace 모델 경로를 직접 지정할 수도 있다: `--llm Qwen/Qwen2.5
 ]
 ```
 
-**`answers_1_shot_qwen_Similar_template_with_patchcore.meta.json`** — 실험 메타데이터:
+**`answers_1_shot_qwen_Similar_template_with_patchcore_v1_100img.meta.json`** — 실험 메타데이터:
 ```json
 {
   "experiment_name": "patchcore_qwen_1shot",
   "llm": "qwen",
   "ad_model": "patchcore",
+  "ad_version": 1,
   "few_shot": 1,
+  "sample_per_folder": 3,
   "accuracy": 62.8,
   "processed": 100,
   "errors": 3,
@@ -281,6 +290,17 @@ HuggingFace 모델 경로를 직접 지정할 수도 있다: `--llm Qwen/Qwen2.5
   "timestamp": "2026-02-09T15:30:00"
 }
 ```
+
+### 출력 파일명 규칙
+
+```
+answers_{few_shot}_shot_{llm}_{template}{_with_{ad_model}}{_v{version}}_{N}img.json
+```
+
+예시:
+- `answers_1_shot_qwen_Random_template_with_patchcore_v1_20img.json` — AD v1 사용
+- `answers_1_shot_qwen_Random_template_with_patchcore_100img.json` — AD 버전 미지정 (latest)
+- `answers_1_shot_qwen_Random_template_20img.json` — AD 없이 LLM만
 
 ### 비교 테이블
 
@@ -420,12 +440,14 @@ compare_results.py  →  비교 테이블 출력
 ```bash
 # LLM만 비교 (AD 없이)
 python scripts/run_experiment.py --llm qwen
+python scripts/run_experiment.py --llm internvl
 python scripts/run_experiment.py --llm gpt-4o
 python scripts/run_experiment.py --llm claude
 python scripts/run_experiment.py --llm gemini
 
 # AD + LLM 조합 비교 (AD 추론 자동 실행)
 python scripts/run_experiment.py --llm qwen --ad-model patchcore
+python scripts/run_experiment.py --llm internvl --ad-model patchcore
 python scripts/run_experiment.py --llm gpt-4o --ad-model patchcore
 
 # 이미 생성된 AD 예측 JSON 사용 (추론 스킵)

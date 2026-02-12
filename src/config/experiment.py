@@ -27,10 +27,11 @@ class ExperimentConfig:
     resume: bool = False
 
     # AD model settings
-    ad_config: Optional[str] = None          # inference config YAML 경로
+    ad_config: Optional[str] = None          # anomaly.yaml 경로 (run_ad_inference_ckpt.py용)
     ad_output: Optional[str] = None          # AD 예측 JSON 경로 (있으면 inference 스킵)
     ad_thresholds: Optional[str] = None      # 카테고리별 threshold YAML 경로
     ad_checkpoint_dir: Optional[str] = None  # 체크포인트 루트 경로
+    ad_version: Optional[int] = None         # 체크포인트 버전 (null = 최신)
 
     @property
     def experiment_name(self) -> str:
@@ -67,4 +68,5 @@ def load_experiment_config(path: str | Path) -> ExperimentConfig:
         ad_output=ad_section.get("output"),
         ad_thresholds=ad_section.get("thresholds"),
         ad_checkpoint_dir=ad_section.get("checkpoint_dir"),
+        ad_version=ad_section.get("version"),
     )

@@ -1,84 +1,91 @@
 {
   "type": "object",
   "required": [
-    "timestamp",
-    "image",
-    "decision",
-    "confidence",
-    "defect",
-    "summary",
-    "impact",
-    "recommendation",
-    "artifacts"
+    "image_path",
+    "is_anomaly_LLM",
+    "llm_report",
+    "llm_summary"
   ],
   "properties": {
-    "timestamp": {
+    "dataset": {
       "type": "string"
     },
-    "image": {
+    "category": {
       "type": "string"
     },
-    "decision": {
-      "type": "string",
-      "enum": [
-        "normal",
-        "anomaly"
-      ]
+    "line": {
+      "type": ["string", "null"]
     },
-    "confidence": {
-      "type": "number"
+    "image_path": {
+      "type": "string"
     },
-    "defect": {
-      "type": "object",
-      "required": [
-        "location",
-        "area_ratio",
-        "shape",
-        "severity"
-      ],
+    "heatmap_path": {
+      "type": ["string", "null"]
+    },
+    "mask_path": {
+      "type": ["string", "null"]
+    },
+    "similar_image_path": {
+      "type": ["string", "null"]
+    },
+    "ad_score": {
+      "type": ["number", "null"]
+    },
+    "is_anomaly_AD": {
+      "type": ["boolean", "null"]
+    },
+    "AD_start_time": {
+      "type": ["string", "null"]
+    },
+    "AD_inference_duration": {
+      "type": ["number", "null"]
+    },
+    "is_anomaly_LLM": {
+      "type": ["boolean", "null"]
+    },
+    "llm_report": {
+      "type": ["object", "null"],
       "properties": {
-        "location": {
-          "type": "string"
-        },
-        "area_ratio": {
-          "type": "number"
-        },
-        "shape": {
+        "anomaly_type": {
           "type": "string"
         },
         "severity": {
           "type": "string",
-          "enum": [
-            "low",
-            "medium",
-            "high"
-          ]
-        }
-      }
-    },
-    "summary": {
-      "type": "string"
-    },
-    "impact": {
-      "type": "string"
-    },
-    "recommendation": {
-      "type": "string"
-    },
-    "artifacts": {
-      "type": "object",
-      "required": [
-        "overlay_path",
-        "heatmap_path"
-      ],
-      "properties": {
-        "overlay_path": {
+          "enum": ["none", "low", "medium", "high"]
+        },
+        "location": {
           "type": "string"
         },
-        "heatmap_path": {
+        "description": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "recommendation": {
           "type": "string"
         }
       }
+    },
+    "llm_summary": {
+      "type": ["object", "null"],
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": ["none", "low", "medium", "high"]
+        }
+      }
+    },
+    "llm_start_time": {
+      "type": ["string", "null"]
+    },
+    "llm_inference_duration": {
+      "type": ["number", "null"]
     }
   }
 }

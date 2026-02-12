@@ -3,51 +3,39 @@ import os
 import shutil
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from mmad_inspector.service.settings import load_runtime_config
-from mmad_inspector.anomaly.dummy_edge import DummyEdgeAnomaly
-from mmad_inspector.mllm.echo import EchoMLLM
-from mmad_inspector.service.pipeline import InspectionPipeline
-from mmad_inspector.storage.db import connect, insert_report, list_reports, get_report
+from src.storage.pg import connect, insert_report, list_reports, get_report
 
 app = FastAPI(title="MMAD Inspector API")
 
-cfg_path = os.environ.get("RUNTIME_CFG", "configs/anomaly.yaml")
-cfg = load_runtime_config(cfg_path)
+# CORS — 프론트엔드에서 접근 허용
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Step 1 components
-anomaly = DummyEdgeAnomaly(**cfg.anomaly.get("dummy", {}))
-mllm = EchoMLLM(**cfg.mllm.get("echo", {}))
-pipe = InspectionPipeline(anomaly_model=anomaly, mllm_client=mllm, runtime_cfg=cfg)
+# PostgreSQL 연결
+PG_DSN = os.environ.get("PG_DSN", "postgresql://son:1234@localhost/inspection")
+conn = connect(PG_DSN)
 
-conn = connect(cfg.paths.db_path)
-UPLOAD_DIR = Path(cfg.paths.artifact_root) / "uploads"
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-class InspectResponse(BaseModel):
-    report_id: int
-    report: dict
-
-@app.post("/inspect", response_model=InspectResponse)
-async def inspect(file: UploadFile = File(...)):
-    suffix = Path(file.filename).suffix or ".png"
-    dst = UPLOAD_DIR / f"upload_{Path(file.filename).stem}{suffix}"
-    with dst.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
-
-    report = pipe.inspect(str(dst))
-    report_id = insert_report(conn, report)
-    return InspectResponse(report_id=report_id, report=report)
+# ── API Endpoints ──────────────────────────────────────────────
 
 @app.get("/reports")
 def reports(limit: int = 50):
+    """최근 N개 리포트 목록 조회."""
     return {"items": list_reports(conn, limit=limit)}
+
 
 @app.get("/reports/{report_id}")
 def report_detail(report_id: int):
+    """리포트 단건 조회."""
     r = get_report(conn, report_id)
     if r is None:
-        return {"error": "not_found"}
+        raise HTTPException(status_code=404, detail="Report not found")
     return r

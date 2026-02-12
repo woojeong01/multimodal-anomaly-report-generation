@@ -20,9 +20,9 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-# Disable HuggingFace online checks (prevents slow downloads)
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
+# NOTE: 첫 실행 시 backbone 다운로드가 필요할 수 있음 (오프라인 모드 비활성화)
+# os.environ["HF_HUB_OFFLINE"] = "1"
+# os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 import cv2
 import numpy as np
@@ -48,9 +48,11 @@ def parse_image_path(image_path: str) -> Tuple[str, str]:
 
 
 def compute_defect_location(anomaly_map: np.ndarray, threshold: float = 0.5) -> Dict[str, Any]:
-    """Compute defect location information from anomaly map."""
-    h, w = anomaly_map.shape
+    """Compute defect location information from normalized (0~1) anomaly map.
 
+    Uses the model's normalized pixel threshold directly.
+    """
+    h, w = anomaly_map.shape
     defect_mask = anomaly_map > threshold
 
     if not defect_mask.any():
@@ -107,6 +109,7 @@ class PatchCoreCheckpointManager:
         self.device = torch.device(device if device != "cuda" or torch.cuda.is_available() else "cpu")
         self.input_size = input_size
         self._models: Dict[str, Any] = {}
+        self._post_params: Dict[str, Dict[str, float]] = {}
         self._warmup_done: set = set()
 
     def _find_checkpoint(self, dataset: str, category: str) -> Optional[Path]:
@@ -140,6 +143,18 @@ class PatchCoreCheckpointManager:
                     return ckpt
         return None
 
+    def _extract_post_params(self, model) -> Dict[str, float]:
+        """Extract post_processor normalization params from loaded model."""
+        params = {}
+        pp = getattr(model, "post_processor", None)
+        if pp is not None:
+            for attr in ["_image_threshold", "_pixel_threshold",
+                         "image_min", "image_max", "pixel_min", "pixel_max"]:
+                val = getattr(pp, attr, None)
+                if val is not None:
+                    params[attr] = float(val)
+        return params
+
     def get_model(self, dataset: str, category: str):
         """Get or load model for dataset/category."""
         from anomalib.models import Patchcore
@@ -155,20 +170,24 @@ class PatchCoreCheckpointManager:
             model.to(self.device)
             self._models[key] = model
 
+            # Extract post_processor params for normalization
+            pp = self._extract_post_params(model)
+            self._post_params[key] = pp
+            if pp:
+                img_thr = pp.get("_image_threshold", "?")
+                pix_thr = pp.get("_pixel_threshold", "?")
+                print(f"  Post-processor: image_threshold={img_thr:.2f}, pixel_threshold={pix_thr:.2f}")
+
         return self._models[key]
 
     def _preprocess(self, image: np.ndarray) -> torch.Tensor:
-        """Preprocess image for model input."""
-        h, w = self.input_size
+        """Convert image to [0,1] float tensor.
 
-        img = cv2.resize(image, (w, h))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        Model's built-in PreProcessor handles resize (256x256) and
+        ImageNet normalization, so we only do BGR→RGB and scale to [0,1].
+        """
+        img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         img = img.astype(np.float32) / 255.0
-
-        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-        std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-        img = (img - mean) / std
-
         img = img.transpose(2, 0, 1)
         tensor = torch.from_numpy(img).unsqueeze(0).float()
         return tensor.to(self.device)
@@ -179,7 +198,7 @@ class PatchCoreCheckpointManager:
         key = f"{dataset}/{category}"
 
         if key not in self._warmup_done:
-            dummy = torch.randn(1, 3, self.input_size[0], self.input_size[1]).to(self.device)
+            dummy = torch.randn(1, 3, 256, 256).to(self.device)
             with torch.no_grad():
                 _ = model(dummy)
             if self.device.type == "cuda":
@@ -187,23 +206,44 @@ class PatchCoreCheckpointManager:
             self._warmup_done.add(key)
 
     def predict(self, dataset: str, category: str, image: np.ndarray) -> Dict[str, Any]:
-        """Run inference on image."""
-        model = self.get_model(dataset, category)
+        """Run inference on image.
 
-        # Preprocess
+        Model's built-in post_processor already normalizes outputs to 0~1:
+        - pred_score: normalized image-level score (may saturate at 1.0)
+        - anomaly_map: normalized pixel-level scores
+        We use anomaly_map.max() as anomaly_score when pred_score saturates.
+        """
+        model = self.get_model(dataset, category)
+        key = f"{dataset}/{category}"
+        pp = self._post_params.get(key, {})
+
+        # Preprocess (just BGR→RGB + [0,1], model handles resize + normalize)
         input_tensor = self._preprocess(image)
         original_size = image.shape[:2]
 
-        # Inference
+        # Inference (pre_processor + model + post_processor all applied)
         with torch.no_grad():
             outputs = model(input_tensor)
 
-        # Extract results
+        # Extract post-processed results (already 0~1)
         anomaly_map = getattr(outputs, "anomaly_map", None)
         pred_score = getattr(outputs, "pred_score", None)
 
+        pred_score_val = float(pred_score.cpu()) if pred_score is not None else 0.0
+
+        # Compute normalized thresholds from post_processor params
+        image_min = pp.get("image_min", 0.0)
+        image_max = pp.get("image_max", 1.0)
+        image_threshold = pp.get("_image_threshold", 0.5)
+        pixel_min = pp.get("pixel_min", 0.0)
+        pixel_max = pp.get("pixel_max", 1.0)
+        pixel_threshold = pp.get("_pixel_threshold", 0.5)
+
+        norm_img_thr = (image_threshold - image_min) / (image_max - image_min) if image_max > image_min else 0.5
+        norm_pixel_thr = (pixel_threshold - pixel_min) / (pixel_max - pixel_min) if pixel_max > pixel_min else 0.5
+
+        # Anomaly map: resize to original image size
         if anomaly_map is not None:
-            # Resize to original size
             if anomaly_map.shape[-2:] != (original_size[0], original_size[1]):
                 anomaly_map = interpolate(
                     anomaly_map,
@@ -212,15 +252,21 @@ class PatchCoreCheckpointManager:
                     align_corners=False
                 )
             anomaly_map = anomaly_map[0, 0].cpu().numpy()
+            anomaly_map = np.clip(anomaly_map, 0.0, 1.0)
+            map_max = float(anomaly_map.max())
+        else:
+            map_max = 0.0
 
-        anomaly_score = float(pred_score[0].cpu()) if pred_score is not None else float(anomaly_map.max())
-        is_anomaly = anomaly_score > self.threshold
+        # pred_score can saturate at 1.0 due to post_processor clamping.
+        # Use anomaly_map max as a more granular score.
+        anomaly_score = map_max if pred_score_val >= 1.0 else pred_score_val
+        is_anomaly = anomaly_score > norm_img_thr
 
         return {
-            "anomaly_score": anomaly_score,
+            "anomaly_score": round(anomaly_score, 4),
             "anomaly_map": anomaly_map,
             "is_anomaly": is_anomaly,
-            "threshold": self.threshold,
+            "pixel_threshold": round(norm_pixel_thr, 4),
         }
 
     def list_available_models(self) -> List[Tuple[str, str]]:
@@ -252,6 +298,7 @@ class PatchCoreCheckpointManager:
     def clear_cache(self):
         """Clear loaded models."""
         self._models.clear()
+        self._post_params.clear()
         self._warmup_done.clear()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -269,6 +316,7 @@ def main():
     parser.add_argument("--mmad-json", type=str, required=True, help="Path to mmad.json")
     parser.add_argument("--max-images", type=int, default=None, help="Max images to process")
 
+    parser.add_argument("--version", type=int, default=None, help="Checkpoint version (overrides config)")
     parser.add_argument("--output", type=str, default="output/ad_predictions.json", help="Output JSON path")
     parser.add_argument("--resume", action="store_true", help="Resume from existing output")
 
@@ -281,7 +329,7 @@ def main():
 
     # Load config
     config = load_config(args.config)
-    config_version = config.get("predict", {}).get("version")
+    config_version = args.version if args.version is not None else config.get("predict", {}).get("version")
     config_datasets = config.get("data", {}).get("datasets")
     config_categories = config.get("data", {}).get("categories")
     input_size = tuple(config.get("data", {}).get("image_size", [700, 700]))
@@ -412,13 +460,14 @@ def main():
 
                 result_dict = {
                     "image_path": image_path,
-                    "anomaly_score": round(float(result["anomaly_score"]), 4),
+                    "anomaly_score": result["anomaly_score"],
                     "is_anomaly": result["is_anomaly"],
-                    "threshold": result["threshold"],
                 }
 
                 if result["anomaly_map"] is not None:
-                    location_info = compute_defect_location(result["anomaly_map"], result["threshold"])
+                    location_info = compute_defect_location(
+                        result["anomaly_map"], result["pixel_threshold"]
+                    )
                     result_dict["defect_location"] = location_info
                     result_dict["map_stats"] = {
                         "max": round(float(result["anomaly_map"].max()), 4),
