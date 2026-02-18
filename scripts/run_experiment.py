@@ -9,6 +9,10 @@ Usage:
     python scripts/run_experiment.py --llm qwen --ad-model patchcore
     python scripts/run_experiment.py --llm qwen --max-images 5
 
+    # RAG comparison
+    python scripts/run_experiment.py --llm internvl3.5-2b              # baseline
+    python scripts/run_experiment.py --llm internvl3.5-2b --rag        # with RAG
+
     # List available models
     python scripts/run_experiment.py --list-models
 
@@ -37,7 +41,9 @@ if str(PROJ_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJ_ROOT))
 
 from src.config.experiment import ExperimentConfig, load_experiment_config
+from src.ad import load_ad_predictions_file, normalize_image_key, to_llm_ad_info
 from src.mllm.factory import MODEL_REGISTRY, get_llm_client, list_llm_models
+from src.mllm.base import format_ad_info
 from src.eval.metrics import calculate_accuracy_mmad
 
 
@@ -80,30 +86,15 @@ def load_mmad_data(json_path: str) -> dict:
 
 
 def load_ad_predictions(ad_output_path: str) -> dict:
-    """Load AD predictions JSON and index by image path."""
-    with open(ad_output_path, "r", encoding="utf-8") as f:
-        predictions = json.load(f)
-
-    if isinstance(predictions, list):
-        indexed = {}
-        for p in predictions:
-            img_key = p.get("image_path") or p.get("image") or p.get("img_path") or p.get("path")
-            if img_key:
-                img_key = img_key.lstrip("./")
-                indexed[img_key] = p
-        return indexed
-    elif isinstance(predictions, dict):
-        if "predictions" in predictions:
-            return load_ad_predictions(predictions["predictions"])
-        return predictions
-    return predictions
+    """Load AD predictions JSON and index by normalized image path."""
+    return load_ad_predictions_file(ad_output_path)
 
 
 def run_ad_inference(cfg: ExperimentConfig, data_root: str, mmad_json: str) -> str:
-    """Run AD model inference using run_ad_inference_ckpt.py.
+    """Run AD model inference using run_ad_inference.py.
 
     If cfg.ad_output already points to an existing file, skip inference.
-    Otherwise run scripts/run_ad_inference_ckpt.py via subprocess.
+    Otherwise run scripts/run_ad_inference.py via subprocess.
     """
     # ad.output를 명시적으로 지정한 경우에만 스킵 (사용자가 의도적으로 재사용)
     if cfg.ad_output and Path(cfg.ad_output).exists():
@@ -116,7 +107,7 @@ def run_ad_inference(cfg: ExperimentConfig, data_root: str, mmad_json: str) -> s
     ad_output = str(output_dir / f"{cfg.ad_model}_predictions.json")
 
     # Find inference script
-    inference_script = str(PROJ_ROOT / "scripts" / "run_ad_inference_ckpt.py")
+    inference_script = str(PROJ_ROOT / "scripts" / "run_ad_inference.py")
     if not Path(inference_script).exists():
         print(f"Error: inference script not found: {inference_script}")
         sys.exit(1)
@@ -130,18 +121,20 @@ def run_ad_inference(cfg: ExperimentConfig, data_root: str, mmad_json: str) -> s
     # Build command
     cmd = [
         sys.executable, inference_script,
+        "--backend", "ckpt",
         "--checkpoint-dir", checkpoint_dir,
         "--data-root", data_root,
         "--mmad-json", mmad_json,
         "--output", ad_output,
+        "--output-format", "report",
     ]
 
     ad_config = cfg.ad_config or "configs/anomaly.yaml"
     if Path(ad_config).exists():
         cmd.extend(["--config", ad_config])
 
-    if cfg.ad_thresholds is not None:
-        cmd.extend(["--threshold", str(cfg.ad_thresholds)])
+    if cfg.ad_threshold is not None:
+        cmd.extend(["--threshold", str(cfg.ad_threshold)])
 
     if cfg.ad_version is not None:
         cmd.extend(["--version", str(cfg.ad_version)])
@@ -151,7 +144,7 @@ def run_ad_inference(cfg: ExperimentConfig, data_root: str, mmad_json: str) -> s
 
     version_str = f"v{cfg.ad_version}" if cfg.ad_version is not None else "latest"
     print("=" * 60)
-    print("Running AD Model Inference (ckpt)")
+    print("Running AD Model Inference")
     print("=" * 60)
     print(f"Script:       {inference_script}")
     print(f"Config:       {ad_config}")
@@ -237,10 +230,27 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
     template_type = "Similar_template" if cfg.similar_template else "Random_template"
     ad_suffix = f"_with_{cfg.ad_model}" if cfg.ad_model else ""
     version_suffix = f"_v{cfg.ad_version}" if cfg.ad_model and cfg.ad_version is not None else ""
+    rag_suffix = "_rag" if cfg.rag else ""
     llm_safe = cfg.llm.replace("/", "_").replace("\\", "_")
     img_count = f"_{len(image_paths)}img"
-    output_name = f"answers_{cfg.few_shot}_shot_{llm_safe}_{template_type}{ad_suffix}{version_suffix}{img_count}"
+    output_name = f"answers_{cfg.few_shot}_shot_{llm_safe}_{template_type}{ad_suffix}{version_suffix}{rag_suffix}{img_count}"
     answers_json_path = output_dir / f"{output_name}.json"
+
+    # Initialize RAG retriever if enabled
+    rag_retriever = None
+    if cfg.rag:
+        from src.rag import Indexer, Retrievers
+        from src.rag.prompt import rag_prompt
+
+        rag_json = cfg.rag_json_path or str(Path(data_root) / "domain_knowledge.json")
+        if not Path(rag_json).exists():
+            print(f"Error: domain_knowledge.json not found at {rag_json}")
+            sys.exit(1)
+
+        indexer = Indexer(json_path=rag_json, persist_dir="vectorstore/domain_knowledge")
+        vectorstore = indexer.get_or_create()
+        rag_retriever = Retrievers(vectorstore)
+        print(f"RAG enabled: {vectorstore._collection.count()} documents indexed")
 
     print("=" * 60)
     print("MMAD Experiment Runner")
@@ -248,6 +258,7 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
     print(f"Experiment:  {cfg.experiment_name}")
     print(f"LLM:         {cfg.llm}")
     print(f"AD model:    {cfg.ad_model or 'none'}")
+    print(f"RAG:         {'enabled' if cfg.rag else 'disabled'}")
     print(f"Few-shot:    {cfg.few_shot}")
     print(f"Template:    {template_type}")
     print(f"Image size:  {cfg.max_image_size}")
@@ -326,18 +337,33 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
         # Get AD prediction for this image
         ad_info = None
         if ad_predictions is not None:
-            ad_info = ad_predictions.get(image_rel)
-            if ad_info is None:
-                ad_info = ad_predictions.get(image_rel.replace("\\", "/"))
+            image_key = normalize_image_key(image_rel)
+            ad_raw = ad_predictions.get(image_key)
+            if ad_raw is not None:
+                ad_info = to_llm_ad_info(ad_raw)
+
+        # Build RAG instruction if enabled
+        instruction = None
+        if rag_retriever is not None:
+            parts = image_rel.split("/")
+            ds_name = parts[0] if len(parts) > 0 else ""
+            cat_name = parts[1] if len(parts) > 1 else ""
+
+            query = f"{cat_name} defect anomaly"
+            docs = rag_retriever.retrieve(query, dataset=ds_name, category=cat_name, k=3)
+            domain_knowledge = rag_retriever.format_context(docs)
+
+            ad_info_str = format_ad_info(ad_info) if ad_info else ""
+            instruction = rag_prompt(ad_info=ad_info_str, domain_knowledge=domain_knowledge)
 
         # Generate answers
         if cfg.batch_mode:
             questions, answers, predicted, q_types = llm_client.generate_answers_batch(
-                query_image_path, meta, few_shot_paths, ad_info=ad_info
+                query_image_path, meta, few_shot_paths, ad_info=ad_info, instruction=instruction
             )
         else:
             questions, answers, predicted, q_types = llm_client.generate_answers(
-                query_image_path, meta, few_shot_paths, ad_info=ad_info
+                query_image_path, meta, few_shot_paths, ad_info=ad_info, instruction=instruction
             )
 
         if predicted is None or len(predicted) != len(answers):
@@ -380,6 +406,7 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
         "llm": cfg.llm,
         "ad_model": cfg.ad_model,
         "ad_version": cfg.ad_version,
+        "rag": cfg.rag,
         "few_shot": cfg.few_shot,
         "similar_template": cfg.similar_template,
         "sample_per_folder": cfg.sample_per_folder,
@@ -439,12 +466,20 @@ def main():
                         help="Override sampling seed")
     parser.add_argument("--data-root", type=str, default=None,
                         help="Override data root path")
+    parser.add_argument("--mmad-json", type=str, default=None,
+                        help="Override mmad json path (default: {data_root}/mmad.json)")
     parser.add_argument("--output-dir", type=str, default=None,
                         help="Override output directory")
     parser.add_argument("--batch-mode", type=str, default=None, choices=["true", "false"],
                         help="Override batch mode (default: auto per model)")
     parser.add_argument("--resume", action="store_true", default=None,
                         help="Resume from existing results")
+
+    # RAG
+    parser.add_argument("--rag", action="store_true", default=None,
+                        help="Enable RAG domain knowledge injection")
+    parser.add_argument("--rag-json", type=str, default=None,
+                        help="Path to domain_knowledge.json (default: {data_root}/domain_knowledge.json)")
 
     # Utility
     parser.add_argument("--list-models", action="store_true",
@@ -488,15 +523,25 @@ def main():
         cfg.sample_seed = args.sample_seed
     if args.data_root is not None:
         cfg.data_root = args.data_root
+    if args.mmad_json is not None:
+        cfg.mmad_json = args.mmad_json
     if args.output_dir is not None:
         cfg.output_dir = args.output_dir
     if args.batch_mode is not None:
         cfg.batch_mode = args.batch_mode == "true"
     if args.resume is not None:
         cfg.resume = args.resume
+    if args.rag is not None:
+        cfg.rag = args.rag
+    if args.rag_json is not None:
+        cfg.rag_json_path = args.rag_json
 
     # 모델별 기본값 적용 (CLI로 명시하지 않은 경우)
     _BATCH_MODE_DEFAULTS = {
+        "internvl": True,
+        "internvl3.5-8b": True,
+        "internvl2.5-8b": True,
+        "internvl-8b": True,
         "llava": False,
         "llava-onevision": False,
     }

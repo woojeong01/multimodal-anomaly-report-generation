@@ -29,14 +29,19 @@ if str(PROJ_ROOT) not in sys.path:
 class BackboneWrapper(nn.Module):
     """Wrapper that extracts and concatenates features from backbone."""
 
-    def __init__(self, feature_extractor, layers: Tuple[str, ...]):
+    def __init__(self, feature_extractor, feature_pooler, layers: Tuple[str, ...]):
         super().__init__()
         self.feature_extractor = feature_extractor
+        self.feature_pooler = feature_pooler
         self.layers = layers
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Extract and concatenate features from specified layers."""
         features_dict = self.feature_extractor(x)
+
+        # Match anomalib PatchCore forward: AvgPool2d before concatenation.
+        for layer in self.layers:
+            features_dict[layer] = self.feature_pooler(features_dict[layer])
 
         # Get target size from first layer
         first_layer = self.layers[0]
@@ -124,15 +129,17 @@ def export_model(
         from anomalib.models import Patchcore
 
         print(f"  Loading: {checkpoint_path}")
-        model = Patchcore.load_from_checkpoint(str(checkpoint_path), map_location="cpu")
+        model = Patchcore.load_from_checkpoint(str(checkpoint_path), map_location="cpu", weights_only=False)
         model.eval()
 
         inner = model.model
         memory_bank = inner.memory_bank.cpu().numpy()
         layers = inner.layers
+        num_neighbors = int(getattr(inner, "num_neighbors", 1))
 
         print(f"  Memory bank: {memory_bank.shape} ({memory_bank.nbytes / 1024 / 1024:.1f} MB)")
         print(f"  Layers: {layers}")
+        print(f"  Num neighbors: {num_neighbors}")
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -143,7 +150,7 @@ def export_model(
 
         # 2. Export backbone to ONNX
         backbone_path = output_dir / "backbone.onnx"
-        backbone = BackboneWrapper(inner.feature_extractor, layers)
+        backbone = BackboneWrapper(inner.feature_extractor, inner.feature_pooler, layers)
         backbone.eval()
 
         dummy_input = torch.randn(1, 3, input_size[0], input_size[1])
@@ -178,6 +185,7 @@ def export_model(
             "feature_dim": int(test_output.shape[1]),
             "feature_map_size": [int(test_output.shape[2]), int(test_output.shape[3])],
             "memory_bank_size": int(memory_bank.shape[0]),
+            "num_neighbors": num_neighbors,
         }
         config_path = output_dir / "config.json"
         with open(config_path, "w") as f:

@@ -85,15 +85,17 @@ class QwenVLClient(BaseLLMClient):
         few_shot_paths: List[str],
         questions: List[Dict[str, str]],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> dict:
         """Build Qwen VL message format."""
         content = []
 
-        # Select instruction based on AD info availability
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            instruction = INSTRUCTION
+        # Select instruction: custom > AD > default
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
 
         # Instruction
         content.append({"type": "text", "text": instruction})
@@ -174,6 +176,7 @@ class QwenVLClient(BaseLLMClient):
         meta: dict,
         few_shot_paths: List[str],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers one question at a time (Qwen's approach)."""
         questions, answers, question_types = self.parse_conversation(meta)
@@ -186,7 +189,13 @@ class QwenVLClient(BaseLLMClient):
         for i in range(len(questions)):
             # Qwen asks one question at a time
             part_questions = questions[i:i + 1]
-            payload = self.build_payload(query_image_path, few_shot_paths, part_questions, ad_info=ad_info)
+            payload = self.build_payload(
+                query_image_path,
+                few_shot_paths,
+                part_questions,
+                ad_info=ad_info,
+                instruction=instruction,
+            )
 
             response = self.send_request(payload)
             if response is None:
@@ -213,6 +222,7 @@ class QwenVLClient(BaseLLMClient):
         meta: dict,
         few_shot_paths: List[str],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers for ALL questions in a single model call (5-8x faster)."""
         questions, answers, question_types = self.parse_conversation(meta)
@@ -221,7 +231,13 @@ class QwenVLClient(BaseLLMClient):
             return questions, answers, None, question_types
 
         # Build payload with ALL questions at once
-        payload = self.build_payload(query_image_path, few_shot_paths, questions, ad_info=ad_info)
+        payload = self.build_payload(
+            query_image_path,
+            few_shot_paths,
+            questions,
+            ad_info=ad_info,
+            instruction=instruction,
+        )
 
         # Single model call for all questions
         response = self.send_request(payload)

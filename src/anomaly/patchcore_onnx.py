@@ -54,6 +54,7 @@ class PatchCoreOnnx(PerClassAnomalyModel):
         self._config = None
         self._input_name = None
         self._output_name = None
+        self._num_neighbors = 1
 
     def load_model(self) -> None:
         """Load backbone ONNX and memory bank."""
@@ -86,7 +87,9 @@ class PatchCoreOnnx(PerClassAnomalyModel):
             self._config = {
                 "input_size": [224, 224],
                 "feature_dim": 1536,
+                "num_neighbors": 1,
             }
+        self._num_neighbors = int(self._config.get("num_neighbors", 1))
 
         # Set providers
         if self.device == "cuda":
@@ -201,33 +204,78 @@ class PatchCoreOnnx(PerClassAnomalyModel):
         b, c, h, w = features.shape
         features_flat = features[0].transpose(1, 2, 0).reshape(-1, c)  # [H*W, C]
 
-        # Compute L2 distance to memory bank
-        # memory_bank: [N, C]
-        # distances: [H*W, N]
-        # Using einsum for efficiency: ||a - b||^2 = ||a||^2 + ||b||^2 - 2*a.b
-        features_sq = np.sum(features_flat ** 2, axis=1, keepdims=True)  # [H*W, 1]
-        memory_sq = np.sum(self._memory_bank ** 2, axis=1, keepdims=True).T  # [1, N]
-        cross = features_flat @ self._memory_bank.T  # [H*W, N]
-
-        distances = np.sqrt(np.maximum(features_sq + memory_sq - 2 * cross, 0))
-
-        # Get minimum distance for each patch
-        min_distances = distances.min(axis=1)  # [H*W]
-
-        # Reshape to spatial map
+        # PatchCore nearest-neighbor search against the memory bank.
+        distances = self._euclidean_dist(features_flat, self._memory_bank)
+        min_locations = np.argmin(distances, axis=1)  # [H*W]
+        min_distances = distances[np.arange(distances.shape[0]), min_locations]  # [H*W]
         anomaly_map = min_distances.reshape(h, w)
 
         # Upsample to original size
         anomaly_map = cv2.resize(anomaly_map, (original_size[1], original_size[0]))
 
-        # Anomaly score is max value
-        anomaly_score = float(anomaly_map.max())
+        # Match anomalib PatchCore image-level scoring.
+        anomaly_score = float(self._compute_image_score(min_distances, min_locations, features_flat))
 
         return anomaly_map, anomaly_score
 
     def predict_batch(self, images: List[np.ndarray]) -> List[AnomalyResult]:
         """Run inference on multiple images."""
         return [self.predict(img) for img in images]
+
+    @staticmethod
+    def _euclidean_dist(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """Compute pairwise L2 distances between rows of a and b."""
+        a_sq = np.sum(a ** 2, axis=1, keepdims=True)          # [M, 1]
+        b_sq = np.sum(b ** 2, axis=1, keepdims=True).T        # [1, N]
+        cross = a @ b.T                                        # [M, N]
+        return np.sqrt(np.maximum(a_sq + b_sq - 2.0 * cross, 0.0))
+
+    def _nearest_neighbors(self, embedding: np.ndarray, n_neighbors: int) -> tuple[np.ndarray, np.ndarray]:
+        """Find nearest neighbors in the memory bank."""
+        distances = self._euclidean_dist(embedding, self._memory_bank)  # [M, N]
+        if n_neighbors == 1:
+            locations = np.argmin(distances, axis=1, keepdims=True)  # [M, 1]
+            patch_scores = distances[np.arange(distances.shape[0]), locations[:, 0]][:, None]
+            return patch_scores, locations
+
+        idx = np.argpartition(distances, kth=n_neighbors - 1, axis=1)[:, :n_neighbors]
+        row = np.arange(distances.shape[0])[:, None]
+        vals = distances[row, idx]
+        order = np.argsort(vals, axis=1)
+        sorted_idx = idx[row, order]
+        sorted_vals = vals[row, order]
+        return sorted_vals, sorted_idx
+
+    def _compute_image_score(
+        self,
+        patch_scores: np.ndarray,
+        locations: np.ndarray,
+        embedding: np.ndarray,
+    ) -> float:
+        """Compute image-level score using anomalib PatchCore weighting."""
+        if patch_scores.size == 0:
+            return 0.0
+        if self._num_neighbors <= 1:
+            return float(np.max(patch_scores))
+
+        max_patch_idx = int(np.argmax(patch_scores))
+        max_patch_feature = embedding[max_patch_idx]          # [C]
+        score = float(patch_scores[max_patch_idx])            # s*
+        nn_index = int(locations[max_patch_idx])              # m*
+
+        memory_bank_size = int(self._memory_bank.shape[0])
+        k = min(max(1, self._num_neighbors), memory_bank_size)
+
+        nn_sample = self._memory_bank[nn_index][None, :]      # [1, C]
+        _, support_idx = self._nearest_neighbors(nn_sample, n_neighbors=k)  # [1, K]
+        support = self._memory_bank[support_idx[0]]           # [K, C]
+
+        d = self._euclidean_dist(max_patch_feature[None, :], support)  # [1, K]
+        d = d - np.max(d, axis=1, keepdims=True)
+        softmax = np.exp(d)
+        softmax = softmax / np.sum(softmax, axis=1, keepdims=True)
+        weight = 1.0 - float(softmax[0, 0])
+        return weight * score
 
 
 class PatchCoreModelManager:
@@ -275,6 +323,10 @@ class PatchCoreModelManager:
         """Run inference for specific dataset/category."""
         model = self.get_model(dataset, category)
         return model.predict(image)
+
+    def get_model_path(self, dataset: str, category: str) -> Path:
+        """Get model directory path for dataset/category."""
+        return self.models_dir / dataset / category
 
     def list_available_models(self) -> List[Tuple[str, str]]:
         """List available dataset/category pairs."""

@@ -27,17 +27,22 @@ class ExperimentConfig:
     resume: bool = False
 
     # AD model settings
-    ad_config: Optional[str] = None          # anomaly.yaml 경로 (run_ad_inference_ckpt.py용)
+    ad_config: Optional[str] = None          # anomaly.yaml 경로 (run_ad_inference.py용)
     ad_output: Optional[str] = None          # AD 예측 JSON 경로 (있으면 inference 스킵)
-    ad_thresholds: Optional[str] = None      # 카테고리별 threshold YAML 경로
+    ad_threshold: Optional[float] = None     # anomaly threshold override
     ad_checkpoint_dir: Optional[str] = None  # 체크포인트 루트 경로
     ad_version: Optional[int] = None         # 체크포인트 버전 (null = 최신)
 
+    # RAG settings
+    rag: bool = False                        # RAG 도메인 지식 주입 여부
+    rag_json_path: Optional[str] = None      # domain_knowledge.json 경로
+
     @property
     def experiment_name(self) -> str:
-        """Auto-generate experiment name: {ad_model}_{llm}_{few_shot}shot"""
+        """Auto-generate experiment name: {ad_model}_{llm}_{few_shot}shot[_rag]"""
         ad = self.ad_model or "no_ad"
-        return f"{ad}_{self.llm}_{self.few_shot}shot"
+        rag_suffix = "_rag" if self.rag else ""
+        return f"{ad}_{self.llm}_{self.few_shot}shot{rag_suffix}"
 
 
 def load_experiment_config(path: str | Path) -> ExperimentConfig:
@@ -49,6 +54,7 @@ def load_experiment_config(path: str | Path) -> ExperimentConfig:
 
     eval_section = d.get("eval", {})
     ad_section = d.get("ad", {})
+    rag_section = d.get("rag", {})
 
     return ExperimentConfig(
         ad_model=d.get("ad_model"),
@@ -66,7 +72,9 @@ def load_experiment_config(path: str | Path) -> ExperimentConfig:
         resume=eval_section.get("resume", False),
         ad_config=ad_section.get("config"),
         ad_output=ad_section.get("output"),
-        ad_thresholds=ad_section.get("thresholds"),
+        ad_threshold=ad_section.get("threshold"),
         ad_checkpoint_dir=ad_section.get("checkpoint_dir"),
         ad_version=ad_section.get("version"),
+        rag=rag_section.get("enabled", False),
+        rag_json_path=rag_section.get("json_path"),
     )

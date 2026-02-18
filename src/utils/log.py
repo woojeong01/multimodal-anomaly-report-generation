@@ -51,7 +51,8 @@ def setup_logger(
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setLevel(getattr(logging, log_level.upper()))
         file_formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
         )
         file_formatter.converter = lambda *args: datetime.now(KST).timetuple()
         file_handler.setFormatter(file_formatter)
@@ -61,7 +62,11 @@ def setup_logger(
     if console_logging:
         console_handler = logging.StreamHandler()
         console_handler.setLevel(getattr(logging, log_level.upper()))
-        console_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+        console_formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        console_formatter.converter = lambda *args: datetime.now(KST).timetuple()
         console_handler.setFormatter(console_formatter)
         logger.addHandler(console_handler)
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import math
+import os
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -12,8 +13,14 @@ from PIL import Image
 from torchvision.transforms.functional import InterpolationMode
 
 from .base import BaseLLMClient, INSTRUCTION, INSTRUCTION_WITH_AD, format_ad_info
+from src.utils.device import get_device
 
 logger = logging.getLogger(__name__)
+
+# Keep third-party logs quieter in notebook/runtime environments.
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
 
 @contextlib.contextmanager
@@ -138,7 +145,7 @@ class InternVLClient(BaseLLMClient):
     def __init__(
         self,
         model_path: str = "OpenGVLab/InternVL2-8B",
-        device: str = "cuda",
+        device: str = None,
         torch_dtype: str = "bfloat16",
         max_new_tokens: int = 128,
         num_gpus: int = 1,
@@ -147,7 +154,7 @@ class InternVLClient(BaseLLMClient):
     ):
         super().__init__(**kwargs)
         self.model_path = model_path
-        self.device = device
+        self.device = device or str(get_device(verbose=False))
         self.torch_dtype_str = torch_dtype
         self.max_new_tokens = max_new_tokens
         self.num_gpus = num_gpus
@@ -207,6 +214,9 @@ class InternVLClient(BaseLLMClient):
             return
 
         from transformers import AutoModel, AutoTokenizer
+        from transformers.utils import logging as hf_logging
+
+        hf_logging.set_verbosity_error()
 
         # Loading InternVL model
 
@@ -231,14 +241,24 @@ class InternVLClient(BaseLLMClient):
                 self.model_path, **load_kwargs
             ).eval()
 
-        if self.num_gpus <= 1 and self.device == "cuda" and torch.cuda.is_available():
-            self._model = self._model.cuda()
+        if self.num_gpus <= 1:
+            self._model = self._model.to(self.device)
 
         self._tokenizer = AutoTokenizer.from_pretrained(
             self.model_path,
             trust_remote_code=True,
             use_fast=False
         )
+        if self._tokenizer.pad_token_id is None and self._tokenizer.eos_token_id is not None:
+            self._tokenizer.pad_token_id = self._tokenizer.eos_token_id
+
+        try:
+            eos_id = self._tokenizer.eos_token_id
+            if eos_id is not None:
+                self._model.generation_config.pad_token_id = eos_id
+                self._model.generation_config.eos_token_id = eos_id
+        except Exception:
+            pass
 
         # Model loaded
 
@@ -248,13 +268,15 @@ class InternVLClient(BaseLLMClient):
         few_shot_paths: List[str],
         questions: List[Dict[str, str]],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> dict:
         """Build InternVL message format."""
-        # Select instruction based on AD info availability
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            instruction = INSTRUCTION
+        # Select instruction: custom > AD > default
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
 
         # Build text prompt with image placeholders
         prompt = instruction + "\n"
@@ -284,15 +306,13 @@ class InternVLClient(BaseLLMClient):
 
         # Load images
         query_image = load_image(payload["query_image"], max_num=self.max_patches).to(torch_dtype)
-        if self.device == "cuda":
-            query_image = query_image.cuda()
+        query_image = query_image.to(self.device)
 
         template_images = []
         for ref_path in payload["few_shot_paths"]:
             try:
                 img = load_image(ref_path, max_num=self.max_patches).to(torch_dtype)
-                if self.device == "cuda":
-                    img = img.cuda()
+                img = img.to(self.device)
                 template_images.append(img)
             except Exception as e:
                 continue
@@ -302,7 +322,12 @@ class InternVLClient(BaseLLMClient):
         num_patches_list = [img.shape[0] for img in images]
 
         # Generate
-        generation_config = dict(max_new_tokens=self.max_new_tokens, do_sample=False)
+        generation_config = dict(
+            max_new_tokens=self.max_new_tokens,
+            do_sample=False,
+            pad_token_id=self._tokenizer.eos_token_id,
+            eos_token_id=self._tokenizer.eos_token_id,
+        )
 
         response, _ = self._model.chat(
             self._tokenizer,
@@ -326,6 +351,7 @@ class InternVLClient(BaseLLMClient):
         meta: dict,
         few_shot_paths: List[str],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers with conversation history (InternVL's approach)."""
         questions, answers, question_types = self.parse_conversation(meta)
@@ -338,15 +364,13 @@ class InternVLClient(BaseLLMClient):
 
         # Load images once
         query_image = load_image(query_image_path, max_num=self.max_patches).to(torch_dtype)
-        if self.device == "cuda":
-            query_image = query_image.cuda()
+        query_image = query_image.to(self.device)
 
         template_images = []
         for ref_path in few_shot_paths:
             try:
                 img = load_image(ref_path, max_num=self.max_patches).to(torch_dtype)
-                if self.device == "cuda":
-                    img = img.cuda()
+                img = img.to(self.device)
                 template_images.append(img)
             except Exception as e:
                 continue
@@ -355,11 +379,12 @@ class InternVLClient(BaseLLMClient):
         pixel_values = torch.cat(images, dim=0)
         num_patches_list = [img.shape[0] for img in images]
 
-        # Select instruction based on AD info availability
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            instruction = INSTRUCTION
+        # Select instruction: custom > AD > default
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
 
         # Build base prompt
         base_prompt = instruction + "\n"
@@ -373,7 +398,12 @@ class InternVLClient(BaseLLMClient):
         predicted_answers = []
         history = None
 
-        generation_config = dict(max_new_tokens=self.max_new_tokens, do_sample=False)
+        generation_config = dict(
+            max_new_tokens=self.max_new_tokens,
+            do_sample=False,
+            pad_token_id=self._tokenizer.eos_token_id,
+            eos_token_id=self._tokenizer.eos_token_id,
+        )
 
         for i in range(len(questions)):
             part_questions = questions[i:i + 1]
@@ -405,6 +435,7 @@ class InternVLClient(BaseLLMClient):
         meta: dict,
         few_shot_paths: List[str],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers for ALL questions in a single model call (5-8x faster)."""
         questions, answers, question_types = self.parse_conversation(meta)
@@ -417,15 +448,13 @@ class InternVLClient(BaseLLMClient):
 
         # Load images once
         query_image = load_image(query_image_path, max_num=self.max_patches).to(torch_dtype)
-        if self.device == "cuda":
-            query_image = query_image.cuda()
+        query_image = query_image.to(self.device)
 
         template_images = []
         for ref_path in few_shot_paths:
             try:
                 img = load_image(ref_path, max_num=self.max_patches).to(torch_dtype)
-                if self.device == "cuda":
-                    img = img.cuda()
+                img = img.to(self.device)
                 template_images.append(img)
             except Exception:
                 continue
@@ -434,11 +463,12 @@ class InternVLClient(BaseLLMClient):
         pixel_values = torch.cat(images, dim=0)
         num_patches_list = [img.shape[0] for img in images]
 
-        # Select instruction based on AD info availability
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            instruction = INSTRUCTION
+        # Select instruction: custom > AD > default
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
 
         # Build prompt with ALL questions
         prompt = instruction + "\n"
@@ -453,7 +483,12 @@ class InternVLClient(BaseLLMClient):
         for q in questions:
             prompt += q["text"] + "\n"
 
-        generation_config = dict(max_new_tokens=self.max_new_tokens * len(questions), do_sample=False)
+        generation_config = dict(
+            max_new_tokens=self.max_new_tokens * len(questions),
+            do_sample=False,
+            pad_token_id=self._tokenizer.eos_token_id,
+            eos_token_id=self._tokenizer.eos_token_id,
+        )
 
         # Single model call for all questions
         response, _ = self._model.chat(

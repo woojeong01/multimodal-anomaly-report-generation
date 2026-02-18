@@ -9,8 +9,11 @@ dataset/
 datasets/
 results/
 output/
-imagenette/
 pre_trained/
+imagenette
+imagenette/
+**/imagenette
+**/imagenette/
 
 # ===== Python =====
 __pycache__/
@@ -51,7 +54,11 @@ Thumbs.db
 CLAUDE.md
 *.claude
 GEMINI.md
+AGENTS.md
 
 # ===== google drive desktop ====
 .tmp.drivedownload
 .tmp.driveupload
+
+# vectorstore
+vectorstore/

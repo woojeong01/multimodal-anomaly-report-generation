@@ -15,13 +15,18 @@ eval:
   max_images: null       # null = all images, set number for quick testing
   sample_per_folder: 10   # 폴더별 N장 샘플링 (null = 전체). dataset/category/split별로 N장씩 추출
   sample_seed: 42        # 샘플링 시드 (재현성)
-  max_image_size: [700, 700]  # LLM에 전달할 이미지 최대 크기 [width, height]
+  max_image_size: [384, 384]  # LLM에 전달할 이미지 최대 크기 [width, height]
   batch_mode: false
   resume: false
 
+# RAG settings
+rag:
+  enabled: false                             # RAG 도메인 지식 주입 여부
+  json_path: null                            # domain_knowledge.json 경로 (null = {data_root}/domain_knowledge.json)
+
 # AD model inference settings (ad_model이 null이 아닐 때 사용)
 ad:
-  config: configs/anomaly.yaml                     # run_ad_inference_ckpt.py 설정 파일
+  config: configs/anomaly.yaml                     # run_ad_inference.py 설정 파일
   output: null                                     # 기존 예측 JSON (있으면 inference 스킵)
   threshold: 0.5                                   # anomaly threshold
   checkpoint_dir: /content/drive/Othercomputers/mynotebook/multimodal-anomaly-report-generation/dataset/MMAD/checkpoints/patchcore_anomalib  # {dir}/Patchcore/{dataset}/{category}/v{N}/model.ckpt

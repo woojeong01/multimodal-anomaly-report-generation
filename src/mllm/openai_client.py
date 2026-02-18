@@ -73,6 +73,7 @@ class GPT4Client(BaseLLMClient):
         few_shot_paths: List[str],
         questions: List[Dict[str, str]],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> dict:
         """Build OpenAI API payload following paper's format."""
 
@@ -104,11 +105,12 @@ class GPT4Client(BaseLLMClient):
         # Encode query image
         query_base64 = self.encode_image_to_base64(query_image_path)
 
-        # Select instruction based on AD info availability
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            instruction = INSTRUCTION
+        # Select instruction: custom > AD > default
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
 
         # Build payload (matches paper's gpt4o.py exactly)
         payload = {
