@@ -58,7 +58,7 @@ def load_experiment_config(path: str | Path) -> ExperimentConfig:
         max_images=eval_section.get("max_images"),
         sample_per_folder=eval_section.get("sample_per_folder"),
         sample_seed=eval_section.get("sample_seed", 42),
-        max_image_size=tuple(eval_section.get("max_image_size", [512, 512])),
+        max_image_size=tuple(eval_section.get("max_image_size") or [512, 512]),
         data_root=d.get("data_root"),
         mmad_json=d.get("mmad_json"),
         output_dir=d.get("output_dir", "outputs/eval"),

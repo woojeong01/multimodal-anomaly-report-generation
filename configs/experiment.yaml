@@ -2,7 +2,7 @@
 # Change ad_model and llm, then run: python scripts/run_experiment.py
 
 ad_model: null          # patchcore | winclip | efficientad | null (no AD)
-llm: internvl               # qwen | llava | gpt-4o | claude | gemini | internvl | ...
+llm: gemini               # qwen | llava | gpt-4o | claude | gemini | internvl | ...
 
 # Data paths (override with env vars or CLI args)
 data_root: /content/drive/Othercomputers/mynotebook/multimodal-anomaly-report-generation/dataset/MMAD
@@ -13,7 +13,7 @@ eval:
   few_shot: 1
   similar_template: false
   max_images: null       # null = all images, set number for quick testing
-  sample_per_folder: 3   # 폴더별 N장 샘플링 (null = 전체). dataset/category/split별로 N장씩 추출
+  sample_per_folder: 10   # 폴더별 N장 샘플링 (null = 전체). dataset/category/split별로 N장씩 추출
   sample_seed: 42        # 샘플링 시드 (재현성)
   max_image_size: [700, 700]  # LLM에 전달할 이미지 최대 크기 [width, height]
   batch_mode: false

@@ -241,8 +241,13 @@ Colab에서 `Failed to load model: ... cannot find the requested files in the lo
 |------|---------|------|
 | `qwen` | Qwen/Qwen2.5-VL-7B-Instruct | |
 | `qwen-2b` | Qwen/Qwen2.5-VL-2B-Instruct | |
+| `qwen3-vl-2b` | Qwen/Qwen3-VL-2B-Instruct | |
+| `qwen3-vl-4b` | Qwen/Qwen3-VL-4B-Instruct | |
 | `qwen3-vl-8b` | Qwen/Qwen3-VL-8B-Instruct | |
 | `internvl` | OpenGVLab/InternVL3_5-8B | **기본값 (v3.5)** |
+| `internvl3.5-1b` | OpenGVLab/InternVL3_5-1B | |
+| `internvl3.5-2b` | OpenGVLab/InternVL3_5-2B | |
+| `internvl3.5-4b` | OpenGVLab/InternVL3_5-4B | |
 | `internvl3.5-8b` | OpenGVLab/InternVL3_5-8B | internvl과 동일 |
 | `internvl2.5-8b` | OpenGVLab/InternVL2_5-8B | |
 | `internvl-8b` | OpenGVLab/InternVL2-8B | v2 |
@@ -251,7 +256,7 @@ Colab에서 `Failed to load model: ... cannot find the requested files in the lo
 
 HuggingFace 모델 경로를 직접 지정할 수도 있다: `--llm Qwen/Qwen2.5-VL-2B-Instruct`
 
-> **InternVL3.5 참고:** `transformers>=4.52.1` 필요 (5.x는 호환 안 됨, `pip install transformers==4.52.4` 권장).
+> **InternVL3.5 참고:** `transformers>=4.52.1` 필요 (5.x는 호환 안 됨, `uv add (pip install) transformers==4.52.4` 권장).
 
 ---
 
@@ -306,8 +311,10 @@ answers_{few_shot}_shot_{llm}_{template}{_with_{ad_model}}{_v{version}}_{N}img.j
 
 ```bash
 python scripts/compare_results.py
-python scripts/compare_results.py --sort accuracy   # 정확도순 정렬
-python scripts/compare_results.py --sort name        # 실험명순 정렬
+python scripts/compare_results.py --sort accuracy          # 정확도순 정렬
+python scripts/compare_results.py --sort name               # 실험명순 정렬
+python scripts/compare_results.py --filter-images 330       # 330장 테스트 결과만
+python scripts/compare_results.py --filter-images 330 --sort accuracy  # 330장 + 정확도순
 ```
 
 출력 예시:

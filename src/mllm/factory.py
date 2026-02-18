@@ -20,16 +20,21 @@ MODEL_REGISTRY = {
     "claude-haiku": {"type": "api", "class": "ClaudeClient", "model": "claude-3-5-haiku-20241022"},
 
     # API models - Google Gemini (FREE tier available!)
-    "gemini": {"type": "api", "class": "GeminiClient", "model": "gemini-1.5-flash"},
+    "gemini": {"type": "api", "class": "GeminiClient", "model": "gemini-2.5-flash"},
     "gemini-flash": {"type": "api", "class": "GeminiClient", "model": "gemini-1.5-flash"},
     "gemini-pro": {"type": "api", "class": "GeminiClient", "model": "gemini-1.5-pro"},
     "gemini-2.0-flash": {"type": "api", "class": "GeminiClient", "model": "gemini-2.0-flash-exp"},
+    "gemini-2.5-flash": {"type": "api", "class": "GeminiClient", "model": "gemini-2.5-flash"},
+    "gemini-2.5-flash-lite": {"type": "api", "class": "GeminiClient", "model": "gemini-2.5-flash-lite"},
+    "gemini-2.5-pro": {"type": "api", "class": "GeminiClient", "model": "gemini-2.5-pro"},
 
     # Qwen models
     "qwen": {"type": "local", "class": "QwenVLClient", "model": "Qwen/Qwen2.5-VL-7B-Instruct"},
     "qwen-7b": {"type": "local", "class": "QwenVLClient", "model": "Qwen/Qwen2.5-VL-7B-Instruct"},
     "qwen-2b": {"type": "local", "class": "QwenVLClient", "model": "Qwen/Qwen2.5-VL-2B-Instruct"},
     "qwen2-vl": {"type": "local", "class": "QwenVLClient", "model": "Qwen/Qwen2-VL-7B-Instruct"},
+    "qwen3-vl-2b": {"type": "local", "class": "QwenVLClient", "model": "Qwen/Qwen3-VL-2B-Instruct"},
+    "qwen3-vl-4b": {"type": "local", "class": "QwenVLClient", "model": "Qwen/Qwen3-VL-4B-Instruct"},
     "qwen3-vl-8b": {"type": "local", "class": "QwenVLClient", "model": "Qwen/Qwen3-VL-8B-Instruct"},
 
     # InternVL models
@@ -39,6 +44,7 @@ MODEL_REGISTRY = {
     "internvl-2b": {"type": "local", "class": "InternVLClient", "model": "OpenGVLab/InternVL2-2B"},
     "internvl-1b": {"type": "local", "class": "InternVLClient", "model": "OpenGVLab/InternVL2-1B"},
     "internvl2.5-8b": {"type": "local", "class": "InternVLClient", "model": "OpenGVLab/InternVL2_5-8B"},
+    "internvl3.5-1b": {"type": "local", "class": "InternVLClient", "model": "OpenGVLab/InternVL3_5-1B"},
     "internvl3.5-2b": {"type": "local", "class": "InternVLClient", "model": "OpenGVLab/InternVL3_5-2B"},
     "internvl3.5-4b": {"type": "local", "class": "InternVLClient", "model": "OpenGVLab/InternVL3_5-4B"},
     "internvl3.5-8b": {"type": "local", "class": "InternVLClient", "model": "OpenGVLab/InternVL3_5-8B"},

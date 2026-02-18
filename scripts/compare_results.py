@@ -99,9 +99,15 @@ def main():
     parser.add_argument("--sort", type=str, default="timestamp",
                         choices=["timestamp", "accuracy", "name"],
                         help="Sort results by field")
+    parser.add_argument("--filter-images", type=int, default=None,
+                        help="Only show results with this many processed images")
     args = parser.parse_args()
 
     results = collect_results(args.output_dir)
+
+    if args.filter_images is not None:
+        results = [r for r in results if r.get("processed") == args.filter_images]
+
     print_table(results, sort_by=args.sort)
 
 
