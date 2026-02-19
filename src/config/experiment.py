@@ -36,6 +36,7 @@ class ExperimentConfig:
     # RAG settings
     rag: bool = False                        # RAG 도메인 지식 주입 여부
     rag_json_path: Optional[str] = None      # domain_knowledge.json 경로
+    rag_persist_dir: Optional[str] = None    # Chroma vectorstore 경로 (Config A/B/C 비교용)
 
     @property
     def experiment_name(self) -> str:

@@ -247,7 +247,8 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
             print(f"Error: domain_knowledge.json not found at {rag_json}")
             sys.exit(1)
 
-        indexer = Indexer(json_path=rag_json, persist_dir="vectorstore/domain_knowledge")
+        rag_persist_dir = getattr(cfg, "rag_persist_dir", None) or "vectorstore/domain_knowledge"
+        indexer = Indexer(json_path=rag_json, persist_dir=rag_persist_dir)
         vectorstore = indexer.get_or_create()
         rag_retriever = Retrievers(vectorstore)
         print(f"RAG enabled: {vectorstore._collection.count()} documents indexed")
@@ -480,6 +481,9 @@ def main():
                         help="Enable RAG domain knowledge injection")
     parser.add_argument("--rag-json", type=str, default=None,
                         help="Path to domain_knowledge.json (default: {data_root}/domain_knowledge.json)")
+    parser.add_argument("--rag-persist-dir", type=str, default=None,
+                        help="Chroma vectorstore 경로 (default: vectorstore/domain_knowledge). "
+                             "Config A/B/C 비교 실험 시 각각 다른 경로 지정.")
 
     # Utility
     parser.add_argument("--list-models", action="store_true",
@@ -535,6 +539,8 @@ def main():
         cfg.rag = args.rag
     if args.rag_json is not None:
         cfg.rag_json_path = args.rag_json
+    if args.rag_persist_dir is not None:
+        cfg.rag_persist_dir = args.rag_persist_dir
 
     # 모델별 기본값 적용 (CLI로 명시하지 않은 경우)
     _BATCH_MODE_DEFAULTS = {
