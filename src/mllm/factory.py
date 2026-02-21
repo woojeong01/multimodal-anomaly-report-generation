@@ -49,6 +49,15 @@ MODEL_REGISTRY = {
     "internvl3.5-4b": {"type": "local", "class": "InternVLClient", "model": "OpenGVLab/InternVL3_5-4B"},
     "internvl3.5-8b": {"type": "local", "class": "InternVLClient", "model": "OpenGVLab/InternVL3_5-8B"},
 
+    # Gemma3 models (Google, local HuggingFace)
+    "gemma3": {"type": "local", "class": "Gemma3Client", "model": "google/gemma-3-4b-it"},
+    "gemma3-4b": {"type": "local", "class": "Gemma3Client", "model": "google/gemma-3-4b-it"},
+    "gemma3-12b": {"type": "local", "class": "Gemma3Client", "model": "google/gemma-3-12b-it"},
+    "gemma3-27b": {"type": "local", "class": "Gemma3Client", "model": "google/gemma-3-27b-it"},
+    # QAT 4bit 양자화 모델 (Google 공식, load_in_4bit 옵션 자동 적용)
+    "gemma3-12b-qat": {"type": "local", "class": "Gemma3Client", "model": "google/gemma-3-12b-it-qat-q4_0-unquantized", "load_in_4bit": True},
+    "gemma3-4b-qat": {"type": "local", "class": "Gemma3Client", "model": "google/gemma-3-4b-it-qat-q4_0-unquantized", "load_in_4bit": True},
+
     # LLaVA models
     "llava": {"type": "local", "class": "LLaVAClient", "model": "llava-hf/llava-1.5-7b-hf"},
     "llava-7b": {"type": "local", "class": "LLaVAClient", "model": "llava-hf/llava-1.5-7b-hf"},
@@ -71,6 +80,10 @@ def get_llm_client(model_name: str, model_path: str = None, **kwargs) -> BaseLLM
     if model_lower in MODEL_REGISTRY:
         info = MODEL_REGISTRY[model_lower]
         actual_model = model_path or info["model"]
+        # registry에 load_in_4bit 같은 추가 옵션이 있으면 kwargs에 병합 (명시적 kwargs 우선)
+        for k, v in info.items():
+            if k not in ("type", "class", "model") and k not in kwargs:
+                kwargs[k] = v
 
         if info["class"] == "GPT4Client":
             from .openai_client import GPT4Client
@@ -92,6 +105,10 @@ def get_llm_client(model_name: str, model_path: str = None, **kwargs) -> BaseLLM
             from .internvl_client import InternVLClient
             return InternVLClient(model_path=actual_model, **kwargs)
 
+        elif info["class"] == "Gemma3Client":
+            from .gemma3_client import Gemma3Client
+            return Gemma3Client(model_path=actual_model, **kwargs)
+
         elif info["class"] == "LLaVAClient":
             from .llava_client import LLaVAClient
             return LLaVAClient(model_path=actual_model, **kwargs)
@@ -105,6 +122,9 @@ def get_llm_client(model_name: str, model_path: str = None, **kwargs) -> BaseLLM
         elif "internvl" in model_lower_path:
             from .internvl_client import InternVLClient
             return InternVLClient(model_path=model_name, **kwargs)
+        elif "gemma" in model_lower_path:
+            from .gemma3_client import Gemma3Client
+            return Gemma3Client(model_path=model_name, **kwargs)
         elif "llava" in model_lower_path:
             from .llava_client import LLaVAClient
             return LLaVAClient(model_path=model_name, **kwargs)
