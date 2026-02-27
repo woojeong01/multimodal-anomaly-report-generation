@@ -1,9 +1,11 @@
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from .path import get_logs_dir
+
+KST = timezone(timedelta(hours=9))
 
 
 def setup_logger(
@@ -42,15 +44,17 @@ def setup_logger(
             log_dir.mkdir(parents=True, exist_ok=True)
 
         # 로그 파일명 생성
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
         log_file = log_dir / f"{log_prefix}_{timestamp}.log"
 
         # 파일 핸들러
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setLevel(getattr(logging, log_level.upper()))
         file_formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
         )
+        file_formatter.converter = lambda *args: datetime.now(KST).timetuple()
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
 
@@ -58,7 +62,11 @@ def setup_logger(
     if console_logging:
         console_handler = logging.StreamHandler()
         console_handler.setLevel(getattr(logging, log_level.upper()))
-        console_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+        console_formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        console_formatter.converter = lambda *args: datetime.now(KST).timetuple()
         console_handler.setFormatter(console_formatter)
         logger.addHandler(console_handler)
 

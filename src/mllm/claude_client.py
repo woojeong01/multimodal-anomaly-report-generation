@@ -75,6 +75,8 @@ class ClaudeClient(BaseLLMClient):
         few_shot_paths: List[str],
         questions: List[Dict[str, str]],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
+        report_mode: bool = False,
     ) -> dict:
         """Build Anthropic API payload following MMAD protocol."""
 
@@ -118,23 +120,30 @@ class ClaudeClient(BaseLLMClient):
         for q in questions:
             conversation_text += f"{q['text']}\n"
 
-        # Select instruction based on AD info availability
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            instruction = INSTRUCTION
+        # Select instruction: custom > AD > default
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
 
         # Add text prompt
-        content.append({
-            "type": "text",
-            "text": (
+        if report_mode:
+            prompt_text = instruction + "\n"
+            if incontext:
+                prompt_text += incontext + "\n"
+            prompt_text += "The last image is the query image.\n"
+            if conversation_text.strip():
+                prompt_text += conversation_text
+        else:
+            prompt_text = (
                 instruction +
                 incontext +
                 "The last image is the query image. " +
                 "Following is the question list: \n" +
                 conversation_text
             )
-        })
+        content.append({"type": "text", "text": prompt_text})
 
         payload = {
             "model": self.model,

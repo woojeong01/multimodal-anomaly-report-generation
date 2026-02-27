@@ -1,8 +1,11 @@
-"""InternVL2 client for MMAD evaluation - HuggingFace transformers."""
+"""InternVL client for MMAD evaluation - HuggingFace transformers."""
 from __future__ import annotations
 
+import contextlib
 import logging
 import math
+import os
+import threading
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -10,12 +13,59 @@ import torchvision.transforms as T
 from PIL import Image
 from torchvision.transforms.functional import InterpolationMode
 
-from .base import BaseLLMClient, INSTRUCTION, INSTRUCTION_WITH_AD, format_ad_info
+from .base import (
+    BaseLLMClient,
+    INSTRUCTION,
+    INSTRUCTION_WITH_AD,
+    REPORT_PROMPT,
+    REPORT_PROMPT_WITH_AD,
+    format_ad_info,
+)
+from src.utils.device import get_device
 
 logger = logging.getLogger(__name__)
 
+# Keep third-party logs quieter in notebook/runtime environments.
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+
+
+@contextlib.contextmanager
+def _patch_linspace_for_meta():
+    """Workaround: InternVL calls .item() on torch.linspace() during __init__.
+
+    When transformers initializes with meta tensors, linspace creates meta
+    tensors where .item() fails. This forces linspace to use CPU.
+    """
+    _orig = torch.linspace
+
+    def _safe_linspace(*args, **kwargs):
+        kwargs.setdefault("device", "cpu")
+        return _orig(*args, **kwargs)
+
+    torch.linspace = _safe_linspace
+    try:
+        yield
+    finally:
+        torch.linspace = _orig
+
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
+
+
+def _as_token_id(value):
+    """Normalize token id value to int or None."""
+    if isinstance(value, (list, tuple)):
+        if not value:
+            return None
+        value = value[0]
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def build_transform(input_size: int):
@@ -97,17 +147,12 @@ def load_image(image_file: str, input_size: int = 448, max_num: int = 12):
 
 
 class InternVLClient(BaseLLMClient):
-    """InternVL2 client using HuggingFace transformers.
+    """InternVL client using HuggingFace transformers.
 
     Supported models:
-    - OpenGVLab/InternVL2-1B
-    - OpenGVLab/InternVL2-2B
-    - OpenGVLab/InternVL2-4B
-    - OpenGVLab/InternVL2-8B
-    - OpenGVLab/InternVL2_5-1B
-    - OpenGVLab/InternVL2_5-2B
-    - OpenGVLab/InternVL2_5-4B
-    - OpenGVLab/InternVL2_5-8B
+    - OpenGVLab/InternVL2-{1,2,4,8}B
+    - OpenGVLab/InternVL2_5-{1,2,4,8}B
+    - OpenGVLab/InternVL3_5-8B
     """
 
     NUM_LAYERS = {
@@ -116,12 +161,13 @@ class InternVLClient(BaseLLMClient):
         'InternVL2-Llama3-76B': 80,
         'InternVL2_5-1B': 24, 'InternVL2_5-2B': 24, 'InternVL2_5-4B': 32,
         'InternVL2_5-8B': 32,
+        'InternVL3_5-8B': 32,
     }
 
     def __init__(
         self,
         model_path: str = "OpenGVLab/InternVL2-8B",
-        device: str = "cuda",
+        device: str = None,
         torch_dtype: str = "bfloat16",
         max_new_tokens: int = 128,
         num_gpus: int = 1,
@@ -130,7 +176,7 @@ class InternVLClient(BaseLLMClient):
     ):
         super().__init__(**kwargs)
         self.model_path = model_path
-        self.device = device
+        self.device = device or str(get_device(verbose=False))
         self.torch_dtype_str = torch_dtype
         self.max_new_tokens = max_new_tokens
         self.num_gpus = num_gpus
@@ -138,6 +184,7 @@ class InternVLClient(BaseLLMClient):
 
         self._model = None
         self._tokenizer = None
+        self._load_lock = threading.Lock()
 
     def _get_torch_dtype(self):
         """Convert string dtype to torch dtype."""
@@ -186,46 +233,145 @@ class InternVLClient(BaseLLMClient):
 
     def _load_model(self):
         """Lazy load model and tokenizer."""
-        if self._model is not None:
+        if self._model is not None and self._tokenizer is not None:
             return
 
-        from transformers import AutoModel, AutoTokenizer
+        with self._load_lock:
+            if self._model is not None and self._tokenizer is not None:
+                return
 
-        # Loading InternVL model
+            from transformers import AutoModel, AutoTokenizer
+            from transformers.utils import logging as hf_logging
 
-        model_name = self.model_path.split('/')[-1]
-        torch_dtype = self._get_torch_dtype()
+            hf_logging.set_verbosity_error()
 
-        torch.set_grad_enabled(False)
+            model_name = self.model_path.split('/')[-1]
+            torch_dtype = self._get_torch_dtype()
 
-        # Note: InternVL2 custom code has issues with low_cpu_mem_usage=True
-        # due to calling .item() during initialization. We disable it.
-        if self.num_gpus > 1:
-            device_map = self._split_model(model_name)
-            self._model = AutoModel.from_pretrained(
-                self.model_path,
+            torch.set_grad_enabled(False)
+
+            # InternVL custom code calls .item() during __init__,
+            # which fails with meta tensors when low_cpu_mem_usage=True
+            load_kwargs = dict(
                 torch_dtype=torch_dtype,
-                low_cpu_mem_usage=False,  # Must be False for InternVL2
+                low_cpu_mem_usage=False,
                 trust_remote_code=True,
-                device_map=device_map
-            ).eval()
+            )
+
+            if self.num_gpus > 1:
+                load_kwargs["device_map"] = self._split_model(model_name)
+
+            model = None
+            tokenizer = None
+            try:
+                with _patch_linspace_for_meta():
+                    model = AutoModel.from_pretrained(
+                        self.model_path, **load_kwargs
+                    ).eval()
+
+                if self.num_gpus <= 1:
+                    model = model.to(self.device)
+
+                tokenizer = AutoTokenizer.from_pretrained(
+                    self.model_path,
+                    trust_remote_code=True,
+                    use_fast=False
+                )
+                if tokenizer is None:
+                    raise RuntimeError(f"Tokenizer loading returned None for model={self.model_path}")
+
+                eos_id = _as_token_id(tokenizer.eos_token_id)
+                pad_id = _as_token_id(tokenizer.pad_token_id)
+                if pad_id is None and eos_id is not None:
+                    pad_id = eos_id
+                    tokenizer.pad_token_id = eos_id
+
+                if eos_id is None:
+                    try:
+                        eos_id = _as_token_id(getattr(model.generation_config, "eos_token_id", None))
+                    except Exception:
+                        eos_id = None
+                if pad_id is None and eos_id is not None:
+                    pad_id = eos_id
+                    tokenizer.pad_token_id = eos_id
+
+                try:
+                    if pad_id is not None:
+                        model.generation_config.pad_token_id = pad_id
+                    if eos_id is not None:
+                        model.generation_config.eos_token_id = eos_id
+                except Exception:
+                    pass
+
+                self._model = model
+                self._tokenizer = tokenizer
+            except Exception:
+                self._model = None
+                self._tokenizer = None
+                raise
+
+    def _generation_config(self, *, max_new_tokens: int) -> dict:
+        if self._tokenizer is None or self._model is None:
+            raise RuntimeError(
+                f"InternVL model/tokenizer is not initialized for {self.model_path}. "
+                "Check model name and HF cache/network."
+            )
+        eos_id = _as_token_id(self._tokenizer.eos_token_id)
+        pad_id = _as_token_id(self._tokenizer.pad_token_id)
+        if eos_id is None:
+            eos_id = _as_token_id(getattr(getattr(self._model, "generation_config", None), "eos_token_id", None))
+        if pad_id is None:
+            pad_id = eos_id
+
+        cfg = {
+            "max_new_tokens": int(max_new_tokens),
+            "do_sample": False,
+        }
+        if pad_id is not None:
+            cfg["pad_token_id"] = pad_id
+        if eos_id is not None:
+            cfg["eos_token_id"] = eos_id
+        return cfg
+
+    def build_report_payload(
+        self,
+        image_path: str,
+        category: str,
+        ad_info: Optional[Dict] = None,
+        few_shot_paths: Optional[List[str]] = None,
+        instruction: Optional[str] = None,
+    ) -> dict:
+        refs = few_shot_paths or []
+        if instruction:
+            prompt = instruction.strip()
+        elif ad_info:
+            prompt = REPORT_PROMPT_WITH_AD.format(category=category, ad_info=format_ad_info(ad_info)).strip()
         else:
-            self._model = AutoModel.from_pretrained(
-                self.model_path,
-                torch_dtype=torch_dtype,
-                low_cpu_mem_usage=False,  # Must be False for InternVL2
-                trust_remote_code=True
-            ).eval()
-            if self.device == "cuda" and torch.cuda.is_available():
-                self._model = self._model.cuda()
+            prompt = REPORT_PROMPT.format(category=category).strip()
 
-        self._tokenizer = AutoTokenizer.from_pretrained(
-            self.model_path,
-            trust_remote_code=True,
-            use_fast=False
-        )
+        # Report mode: do not include MCQ-style "Answer: A/B" instruction.
+        prompt += "\n"
+        if refs:
+            prompt += (
+                f"\nReference normal sample image(s): {len(refs)}\n"
+                "Use these only as baseline for visual comparison.\n"
+            )
+            for _ in refs:
+                prompt += "<image>\n"
 
-        # Model loaded
+        prompt += "\nQuery image:\n<image>\n"
+
+        return {
+            "prompt": prompt,
+            "query_image": image_path,
+            "few_shot_paths": refs,
+            # Report JSON often truncates with small token limits.
+            "max_new_tokens": max(int(self.max_new_tokens), 512),
+        }
+
+    def load_model(self):
+        """Public interface for model warm-up before timed evaluation."""
+        self._load_model()
 
     def build_payload(
         self,
@@ -233,13 +379,16 @@ class InternVLClient(BaseLLMClient):
         few_shot_paths: List[str],
         questions: List[Dict[str, str]],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
+        report_mode: bool = False,
     ) -> dict:
         """Build InternVL message format."""
-        # Select instruction based on AD info availability
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            instruction = INSTRUCTION
+        # Select instruction: custom > AD > default
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
 
         # Build text prompt with image placeholders
         prompt = instruction + "\n"
@@ -250,10 +399,13 @@ class InternVLClient(BaseLLMClient):
                 prompt += "\n<image>\n"
 
         prompt += "Following is the query image:\n<image>\n"
-        prompt += "Following is the question list. Answer with the option's letter from the given choices directly:\n"
-
-        for q in questions:
-            prompt += f"{q['text']}\n"
+        if report_mode:
+            for q in questions:
+                prompt += f"{q['text']}\n"
+        else:
+            prompt += "Following is the question list. Answer with the option's letter from the given choices directly:\n"
+            for q in questions:
+                prompt += f"{q['text']}\n"
 
         return {
             "prompt": prompt,
@@ -269,15 +421,13 @@ class InternVLClient(BaseLLMClient):
 
         # Load images
         query_image = load_image(payload["query_image"], max_num=self.max_patches).to(torch_dtype)
-        if self.device == "cuda":
-            query_image = query_image.cuda()
+        query_image = query_image.to(self.device)
 
         template_images = []
         for ref_path in payload["few_shot_paths"]:
             try:
                 img = load_image(ref_path, max_num=self.max_patches).to(torch_dtype)
-                if self.device == "cuda":
-                    img = img.cuda()
+                img = img.to(self.device)
                 template_images.append(img)
             except Exception as e:
                 continue
@@ -287,7 +437,9 @@ class InternVLClient(BaseLLMClient):
         num_patches_list = [img.shape[0] for img in images]
 
         # Generate
-        generation_config = dict(max_new_tokens=self.max_new_tokens, do_sample=False)
+        generation_config = self._generation_config(
+            max_new_tokens=int(payload.get("max_new_tokens", self.max_new_tokens))
+        )
 
         response, _ = self._model.chat(
             self._tokenizer,
@@ -311,6 +463,7 @@ class InternVLClient(BaseLLMClient):
         meta: dict,
         few_shot_paths: List[str],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers with conversation history (InternVL's approach)."""
         questions, answers, question_types = self.parse_conversation(meta)
@@ -323,15 +476,13 @@ class InternVLClient(BaseLLMClient):
 
         # Load images once
         query_image = load_image(query_image_path, max_num=self.max_patches).to(torch_dtype)
-        if self.device == "cuda":
-            query_image = query_image.cuda()
+        query_image = query_image.to(self.device)
 
         template_images = []
         for ref_path in few_shot_paths:
             try:
                 img = load_image(ref_path, max_num=self.max_patches).to(torch_dtype)
-                if self.device == "cuda":
-                    img = img.cuda()
+                img = img.to(self.device)
                 template_images.append(img)
             except Exception as e:
                 continue
@@ -340,11 +491,12 @@ class InternVLClient(BaseLLMClient):
         pixel_values = torch.cat(images, dim=0)
         num_patches_list = [img.shape[0] for img in images]
 
-        # Select instruction based on AD info availability
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            instruction = INSTRUCTION
+        # Select instruction: custom > AD > default
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
 
         # Build base prompt
         base_prompt = instruction + "\n"
@@ -358,7 +510,7 @@ class InternVLClient(BaseLLMClient):
         predicted_answers = []
         history = None
 
-        generation_config = dict(max_new_tokens=self.max_new_tokens, do_sample=False)
+        generation_config = self._generation_config(max_new_tokens=self.max_new_tokens)
 
         for i in range(len(questions)):
             part_questions = questions[i:i + 1]
@@ -390,6 +542,7 @@ class InternVLClient(BaseLLMClient):
         meta: dict,
         few_shot_paths: List[str],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers for ALL questions in a single model call (5-8x faster)."""
         questions, answers, question_types = self.parse_conversation(meta)
@@ -402,15 +555,13 @@ class InternVLClient(BaseLLMClient):
 
         # Load images once
         query_image = load_image(query_image_path, max_num=self.max_patches).to(torch_dtype)
-        if self.device == "cuda":
-            query_image = query_image.cuda()
+        query_image = query_image.to(self.device)
 
         template_images = []
         for ref_path in few_shot_paths:
             try:
                 img = load_image(ref_path, max_num=self.max_patches).to(torch_dtype)
-                if self.device == "cuda":
-                    img = img.cuda()
+                img = img.to(self.device)
                 template_images.append(img)
             except Exception:
                 continue
@@ -419,11 +570,12 @@ class InternVLClient(BaseLLMClient):
         pixel_values = torch.cat(images, dim=0)
         num_patches_list = [img.shape[0] for img in images]
 
-        # Select instruction based on AD info availability
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            instruction = INSTRUCTION
+        # Select instruction: custom > AD > default
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
 
         # Build prompt with ALL questions
         prompt = instruction + "\n"
@@ -438,7 +590,7 @@ class InternVLClient(BaseLLMClient):
         for q in questions:
             prompt += q["text"] + "\n"
 
-        generation_config = dict(max_new_tokens=self.max_new_tokens * len(questions), do_sample=False)
+        generation_config = self._generation_config(max_new_tokens=self.max_new_tokens * len(questions))
 
         # Single model call for all questions
         response, _ = self._model.chat(

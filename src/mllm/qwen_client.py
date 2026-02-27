@@ -79,25 +79,33 @@ class QwenVLClient(BaseLLMClient):
 
         # Model loaded
 
+    def load_model(self):
+        """Public interface for model warm-up before timed evaluation."""
+        self._load_model()
+
     def build_payload(
         self,
         query_image_path: str,
         few_shot_paths: List[str],
         questions: List[Dict[str, str]],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
+        report_mode: bool = False,
     ) -> dict:
         """Build Qwen VL message format."""
         content = []
 
-        # Select instruction based on AD info availability
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            instruction = INSTRUCTION
+        # Select instruction: custom > AD > default
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
 
         # Instruction
         content.append({"type": "text", "text": instruction})
-        content.append({"type": "text", "text": "Answer with the option's letter from the given choices directly!"})
+        if not report_mode:
+            content.append({"type": "text", "text": "Answer with the option's letter from the given choices directly!"})
 
         # Few-shot templates
         if few_shot_paths:
@@ -109,13 +117,21 @@ class QwenVLClient(BaseLLMClient):
                 content.append({"type": "image", "image": ref_path})
 
         # Query image
-        content.append({"type": "text", "text": "Following is the query image:"})
+        if report_mode:
+            content.append({"type": "text", "text": "Following is the query image for inspection report generation:"})
+        else:
+            content.append({"type": "text", "text": "Following is the query image:"})
         content.append({"type": "image", "image": query_image_path})
 
-        # Questions
-        content.append({"type": "text", "text": "Following is the question list:"})
-        for q in questions:
-            content.append({"type": "text", "text": q["text"]})
+        # Questions / report prompt text
+        if report_mode:
+            for q in questions:
+                if q.get("text"):
+                    content.append({"type": "text", "text": q["text"]})
+        else:
+            content.append({"type": "text", "text": "Following is the question list:"})
+            for q in questions:
+                content.append({"type": "text", "text": q["text"]})
 
         return {"content": content}
 
@@ -174,6 +190,7 @@ class QwenVLClient(BaseLLMClient):
         meta: dict,
         few_shot_paths: List[str],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers one question at a time (Qwen's approach)."""
         questions, answers, question_types = self.parse_conversation(meta)
@@ -186,7 +203,13 @@ class QwenVLClient(BaseLLMClient):
         for i in range(len(questions)):
             # Qwen asks one question at a time
             part_questions = questions[i:i + 1]
-            payload = self.build_payload(query_image_path, few_shot_paths, part_questions, ad_info=ad_info)
+            payload = self.build_payload(
+                query_image_path,
+                few_shot_paths,
+                part_questions,
+                ad_info=ad_info,
+                instruction=instruction,
+            )
 
             response = self.send_request(payload)
             if response is None:
@@ -213,6 +236,7 @@ class QwenVLClient(BaseLLMClient):
         meta: dict,
         few_shot_paths: List[str],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers for ALL questions in a single model call (5-8x faster)."""
         questions, answers, question_types = self.parse_conversation(meta)
@@ -221,7 +245,13 @@ class QwenVLClient(BaseLLMClient):
             return questions, answers, None, question_types
 
         # Build payload with ALL questions at once
-        payload = self.build_payload(query_image_path, few_shot_paths, questions, ad_info=ad_info)
+        payload = self.build_payload(
+            query_image_path,
+            few_shot_paths,
+            questions,
+            ad_info=ad_info,
+            instruction=instruction,
+        )
 
         # Single model call for all questions
         response = self.send_request(payload)

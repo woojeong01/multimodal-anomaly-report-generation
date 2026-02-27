@@ -14,6 +14,19 @@ from anomalib.data.datasets.base.image import AnomalibDataset
 from anomalib.data.dataclasses import ImageBatch, ImageItem
 from anomalib.data.utils.image import read_image, read_mask
 
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp"}
+
+
+def iter_image_files(directory: Path):
+    """Yield image files in a directory with extension-insensitive filtering."""
+    if not directory.exists():
+        return
+    for path in sorted(directory.iterdir()):
+        if path.name.startswith(".") or not path.is_file():
+            continue
+        if path.suffix.lower() in IMAGE_EXTENSIONS:
+            yield path
+
 
 def collate_items(items: list) -> ImageBatch:
     """ImageItem 리스트를 ImageBatch로 변환하는 collate 함수."""
@@ -176,9 +189,7 @@ class GoodsADDataset(AnomalibDataset):
         if self.split == "train":
             train_good = cat_path / "train" / "good"
             if train_good.exists():
-                for img_path in sorted(train_good.glob("*.jpg")):
-                    if img_path.name.startswith("."):
-                        continue
+                for img_path in iter_image_files(train_good):
                     samples_list.append({
                         "image_path": str(img_path),
                         "label": "normal",
@@ -198,9 +209,7 @@ class GoodsADDataset(AnomalibDataset):
                     defect_type = defect_dir.name
                     is_normal = defect_type == "good"
 
-                    for img_path in sorted(defect_dir.glob("*.jpg")):
-                        if img_path.name.startswith("."):
-                            continue
+                    for img_path in iter_image_files(defect_dir):
 
                         mask_path = None
                         if not is_normal:

@@ -8,6 +8,7 @@ import cv2
 import torch
 
 from .base import BaseLLMClient, INSTRUCTION, INSTRUCTION_WITH_AD, format_ad_info
+from src.utils.device import get_device
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class LLaVAClient(BaseLLMClient):
     def __init__(
         self,
         model_path: str = "llava-hf/llava-1.5-7b-hf",
-        device: str = "cuda",
+        device: str = None,
         torch_dtype: str = "float16",
         max_new_tokens: int = 128,
         use_hf: bool = True,  # Use HuggingFace transformers (recommended)
@@ -39,7 +40,7 @@ class LLaVAClient(BaseLLMClient):
     ):
         super().__init__(**kwargs)
         self.model_path = model_path
-        self.device = device
+        self.device = device or str(get_device(verbose=False))
         self.torch_dtype_str = torch_dtype
         self.max_new_tokens = max_new_tokens
         self.use_hf = use_hf
@@ -108,12 +109,18 @@ class LLaVAClient(BaseLLMClient):
         else:
             self._load_model_llava()
 
+    def load_model(self):
+        """Public interface for model warm-up before timed evaluation."""
+        self._load_model()
+
     def build_payload(
         self,
         query_image_path: str,
         few_shot_paths: List[str],
         questions: List[Dict[str, str]],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
+        report_mode: bool = False,
     ) -> dict:
         """Build LLaVA message format."""
         return {
@@ -121,6 +128,8 @@ class LLaVAClient(BaseLLMClient):
             "few_shot_paths": few_shot_paths,
             "questions": questions,
             "ad_info": ad_info,
+            "instruction": instruction,
+            "report_mode": report_mode,
         }
 
     def _generate_hf(self, payload: dict) -> str:
@@ -129,10 +138,13 @@ class LLaVAClient(BaseLLMClient):
 
         # Select instruction based on AD info availability
         ad_info = payload.get("ad_info")
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            instruction = INSTRUCTION
+        instruction = payload.get("instruction")
+        report_mode = bool(payload.get("report_mode", False))
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
 
         # Build prompt
         prompt = f"USER: {instruction}\n"
@@ -143,12 +155,15 @@ class LLaVAClient(BaseLLMClient):
                 prompt += "<image>\n"
 
         prompt += "Test image:\n<image>\n"
-        prompt += "Following is new question list:\n"
-
-        for q in payload["questions"]:
-            prompt += q["text"]
-
-        prompt += "\nAnswer with the option's letter from the given choices directly.\nASSISTANT:"
+        if report_mode:
+            for q in payload["questions"]:
+                prompt += q["text"]
+            prompt += "\nJSON only.\nASSISTANT:"
+        else:
+            prompt += "Following is new question list:\n"
+            for q in payload["questions"]:
+                prompt += q["text"]
+            prompt += "\nAnswer with the option's letter from the given choices directly.\nASSISTANT:"
 
         # Load images
         images = []
@@ -192,10 +207,13 @@ class LLaVAClient(BaseLLMClient):
 
         # Select instruction based on AD info availability
         ad_info = payload.get("ad_info")
-        if ad_info:
-            hint = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
-        else:
-            hint = INSTRUCTION
+        hint = payload.get("instruction")
+        report_mode = bool(payload.get("report_mode", False))
+        if hint is None:
+            if ad_info:
+                hint = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                hint = INSTRUCTION
 
         question = ""
         if payload["few_shot_paths"]:
@@ -204,12 +222,15 @@ class LLaVAClient(BaseLLMClient):
                 question += f"{DEFAULT_IMAGE_TOKEN}\n"
 
         question += f"Test image:\n{DEFAULT_IMAGE_TOKEN}\n"
-        question += "Following is new question list:\n"
-
-        for q in payload["questions"]:
-            question += q["text"]
-
-        qs = hint + '\n' + question + "\nAnswer with the option's letter from the given choices directly."
+        if report_mode:
+            for q in payload["questions"]:
+                question += q["text"]
+            qs = hint + '\n' + question + "\nJSON only."
+        else:
+            question += "Following is new question list:\n"
+            for q in payload["questions"]:
+                question += q["text"]
+            qs = hint + '\n' + question + "\nAnswer with the option's letter from the given choices directly."
 
         conv = conv_templates[self.conv_mode].copy()
         conv.append_message(conv.roles[0], qs)
@@ -218,7 +239,7 @@ class LLaVAClient(BaseLLMClient):
 
         input_ids = tokenizer_image_token(
             prompt, self._tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt'
-        ).unsqueeze(0).cuda()
+        ).unsqueeze(0).to(self.device)
 
         # Process images
         ref_images = []
@@ -239,7 +260,7 @@ class LLaVAClient(BaseLLMClient):
         else:
             image_tensor = self._image_processor.preprocess(images, return_tensors="pt")["pixel_values"]
 
-        image_tensor = [img.unsqueeze(0).half().cuda() for img in image_tensor]
+        image_tensor = [img.unsqueeze(0).half().to(self.device) for img in image_tensor]
         image_sizes = [img.size for img in images]
 
         # Generate
@@ -278,6 +299,7 @@ class LLaVAClient(BaseLLMClient):
         meta: dict,
         few_shot_paths: List[str],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers one question at a time."""
         questions, answers, question_types = self.parse_conversation(meta)
@@ -289,7 +311,13 @@ class LLaVAClient(BaseLLMClient):
 
         for i in range(len(questions)):
             part_questions = questions[i:i + 1]
-            payload = self.build_payload(query_image_path, few_shot_paths, part_questions, ad_info=ad_info)
+            payload = self.build_payload(
+                query_image_path,
+                few_shot_paths,
+                part_questions,
+                ad_info=ad_info,
+                instruction=instruction,
+            )
 
             response = self.send_request(payload)
             if response is None:
@@ -316,6 +344,7 @@ class LLaVAClient(BaseLLMClient):
         meta: dict,
         few_shot_paths: List[str],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
     ) -> Tuple[List[Dict], List[str], Optional[List[str]], List[str]]:
         """Generate answers for ALL questions in a single model call (5-8x faster)."""
         questions, answers, question_types = self.parse_conversation(meta)
@@ -324,7 +353,13 @@ class LLaVAClient(BaseLLMClient):
             return questions, answers, None, question_types
 
         # Build payload with ALL questions at once
-        payload = self.build_payload(query_image_path, few_shot_paths, questions, ad_info=ad_info)
+        payload = self.build_payload(
+            query_image_path,
+            few_shot_paths,
+            questions,
+            ad_info=ad_info,
+            instruction=instruction,
+        )
 
         # Single model call for all questions
         response = self.send_request(payload)

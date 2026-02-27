@@ -73,6 +73,8 @@ class GPT4Client(BaseLLMClient):
         few_shot_paths: List[str],
         questions: List[Dict[str, str]],
         ad_info: Optional[Dict] = None,
+        instruction: Optional[str] = None,
+        report_mode: bool = False,
     ) -> dict:
         """Build OpenAI API payload following paper's format."""
 
@@ -104,11 +106,28 @@ class GPT4Client(BaseLLMClient):
         # Encode query image
         query_base64 = self.encode_image_to_base64(query_image_path)
 
-        # Select instruction based on AD info availability
-        if ad_info:
-            instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+        # Select instruction: custom > AD > default
+        if instruction is None:
+            if ad_info:
+                instruction = INSTRUCTION_WITH_AD.format(ad_info=format_ad_info(ad_info))
+            else:
+                instruction = INSTRUCTION
+
+        if report_mode:
+            prompt_text = instruction + "\n"
+            if incontext:
+                prompt_text += incontext + "\n"
+            prompt_text += "The last image is the query image.\n"
+            if conversation_text.strip():
+                prompt_text += conversation_text
         else:
-            instruction = INSTRUCTION
+            prompt_text = (
+                instruction +
+                incontext +
+                "The last image is the query image" +
+                "Following is the question list: \n" +
+                conversation_text
+            )
 
         # Build payload (matches paper's gpt4o.py exactly)
         payload = {
@@ -126,13 +145,7 @@ class GPT4Client(BaseLLMClient):
                         },
                         {
                             "type": "text",
-                            "text": (
-                                instruction +
-                                incontext +
-                                "The last image is the query image" +
-                                "Following is the question list: \n" +
-                                conversation_text
-                            )
+                            "text": prompt_text
                         },
                     ]
                 }

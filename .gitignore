@@ -9,8 +9,11 @@ dataset/
 datasets/
 results/
 output/
-imagenette/
 pre_trained/
+imagenette
+imagenette/
+**/imagenette
+**/imagenette/
 
 # ===== Python =====
 __pycache__/
@@ -20,6 +23,7 @@ __pycache__/
 
 # ===== Env =====
 .env
+.env.local
 .venv/
 venv/
 
@@ -44,6 +48,8 @@ Thumbs.db
 *.egg-info/
 /dist
 /build
+node_modules/
+**/node_modules/
 .eggs/
 *.egg
 
@@ -51,7 +57,20 @@ Thumbs.db
 CLAUDE.md
 *.claude
 GEMINI.md
+AGENTS.md
 
 # ===== google drive desktop ====
 .tmp.drivedownload
 .tmp.driveupload
+
+# vectorstore
+vectorstore/
+
+# legacy snapshot (temporary import source)
+legacy/
+
+# jupyter
+notebooks/
+
+# docs
+docs/

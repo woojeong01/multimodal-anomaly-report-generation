@@ -14,18 +14,22 @@ def _patched_tqdm_init(self, *args, **kwargs):
 tqdm_class.__init__ = _patched_tqdm_init
 tqdm.tqdm = tqdm_class
 
+import argparse
 import json
+import sys
 import time
 from pathlib import Path
 
-import torch
-from anomalib.models import Patchcore, WinClip, EfficientAd
-from anomalib.models.image.efficient_ad.torch_model import EfficientAdModelSize
-from anomalib.engine import Engine
-from pytorch_lightning.callbacks import Callback, EarlyStopping
+# 프로젝트 루트를 sys.path에 추가 (어디서 실행해도 src 모듈 import 가능)
+SCRIPT_PATH = Path(__file__).resolve()
+PROJ_ROOT = SCRIPT_PATH.parents[1]
+if str(PROJ_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJ_ROOT))
 
-# PyTorch 2.6+ weights_only=True 대응: Anomalib 클래스 허용
-torch.serialization.add_safe_globals([EfficientAdModelSize])
+import torch
+from anomalib.models import Patchcore
+from anomalib.engine import Engine
+from pytorch_lightning.callbacks import Callback
 
 from src.utils.loaders import load_config
 from src.utils.log import setup_logger
@@ -79,49 +83,15 @@ class EpochProgressCallback(Callback):
         print(" | ".join(parts), flush=True)
 
 
-class EarlyStoppingTracker(Callback):
-    """Early Stopping 이벤트를 추적하고 wandb에 기록하는 콜백."""
-
-    def __init__(self, early_stopping_config: dict):
-        super().__init__()
-        self.config = early_stopping_config
-
-    def on_train_end(self, trainer, pl_module):
-        """학습 종료 시 early stopping 정보를 wandb에 기록."""
-        import wandb
-
-        # EarlyStopping 콜백에서 정보 추출
-        early_stopping_cb = None
-        for cb in trainer.callbacks:
-            if isinstance(cb, EarlyStopping):
-                early_stopping_cb = cb
-                break
-
-        if early_stopping_cb is None:
-            return
-
-        # Early stopping으로 종료되었는지 확인
-        was_early_stopped = trainer.current_epoch < (trainer.max_epochs - 1)
-        stopped_epoch = trainer.current_epoch + 1
-        best_score = early_stopping_cb.best_score
-        patience = self.config.get("patience", 10)
-
-        # 콘솔 출력
-        if was_early_stopped:
-            print(f"\n⚡ Early Stopping triggered at epoch {stopped_epoch}")
-            print(f"   Best {self.config.get('monitor', 'metric')}: {best_score:.4f}")
-            get_train_logger().info(f"Early Stopping at epoch {stopped_epoch}, best score: {best_score:.4f}")
-
-        # wandb에 기록 (2가지만)
-        if wandb.run is not None:
-            wandb.run.summary["early_stopping/patience_setting"] = patience  # 초기 patience 설정값
-            wandb.run.summary["early_stopping/stopped_epoch"] = stopped_epoch  # 실제 종료된 epoch
-
-
 class Anomalibs:
-    def __init__(self, config_path: str = "configs/runtime.yaml"):
+    def __init__(self, config_path: str = "configs/anomaly.yaml"):
         self.config = load_config(config_path)
         self.model_name = self.config["anomaly"]["model"]
+        if self.model_name != "patchcore":
+            raise ValueError(
+                f"Only patchcore is supported in this script now. "
+                f"Set anomaly.model=patchcore (got: {self.model_name})"
+            )
         self.model_params = self.filter_none(
             self.config["anomaly"].get(self.model_name, {})
         )
@@ -136,29 +106,28 @@ class Anomalibs:
         self.device = get_device()
         self.accelerator = self.engine_config.get("accelerator", "auto")
         self.loader = MMADLoader(config=self.config, model_name=self.model_name)
-        print(f"[{self.model_name}] device: {self.device}, accelerator: {self.accelerator}")
+        self.image_size = tuple(self.config.get("data", {}).get("image_size", (256, 256)))
+        print(f"[{self.model_name}] device: {self.device}, accelerator: {self.accelerator}, image_size: {self.image_size}")
+        get_train_logger().info(f"[{self.model_name}] device: {self.device}, accelerator: {self.accelerator}, image_size: {self.image_size}")
 
     @staticmethod
     def cleanup_memory():
         """GPU 및 시스템 메모리 캐시 강제 비활성화 및 정리"""
         import gc
-        gc.collect() # Python 가비지 컬렉션
+        gc.collect()
+        gc.collect()  # 순환 참조 해제를 위해 2회 호출
         if torch.cuda.is_available():
-            torch.cuda.empty_cache() # PyTorch CUDA 캐시 비움
-            torch.cuda.ipc_collect() # IPC 메모리 비움
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+            torch.cuda.reset_peak_memory_stats()
 
     @staticmethod
     def filter_none(d: dict) -> dict:
         return {k: v for k, v in d.items() if v is not None}
 
-    # 모델별 checkpoint/early_stopping monitor 설정
-    # - patchcore: 1 epoch만 학습, metric 로깅 없음 → monitor=None
-    # - efficientad: iterative 학습, train_loss가 매 epoch 로깅됨
-    # - winclip: zero-shot, 학습 없음
+    # patchcore는 metric monitor 기반 top-k 저장 대신 epoch별 저장 사용.
     MODEL_METRICS = {
         "patchcore": {"monitor": None, "mode": "max"},
-        "efficientad": {"monitor": "train_loss", "mode": "min"},
-        "winclip": {"monitor": None, "mode": "max"},
     }
 
     def get_evaluator(self):
@@ -179,37 +148,33 @@ class Anomalibs:
         return Evaluator(val_metrics=val_metrics, test_metrics=test_metrics)
 
     def get_model(self):
-        if self.model_name == "patchcore":
-            return Patchcore(**self.model_params)
-        elif self.model_name == "winclip":
-            return WinClip(**self.model_params)
-        elif self.model_name == "efficientad":
-            return EfficientAd(**self.model_params)
-        else:
-            raise ValueError(f"Unknown model: {self.model_name}")
+        from anomalib.pre_processing import PreProcessor
+        from torchvision.transforms.v2 import Normalize
+
+        # Resize는 DataModule에서 처리, pre_processor는 Normalize만
+        transform = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        pre_processor = PreProcessor(transform=transform)
+        return Patchcore(pre_processor=pre_processor, **self.model_params)
 
     def get_datamodule_kwargs(self):
         # datamodule kwargs from training config
         kwargs = {}
         if "train_batch_size" in self.training_config:
             kwargs["train_batch_size"] = self.training_config["train_batch_size"]
-        elif self.model_name == "efficientad":
-            kwargs["train_batch_size"] = 1  # EfficientAd 1 필수
         if "eval_batch_size" in self.training_config:
             kwargs["eval_batch_size"] = self.training_config["eval_batch_size"]
         if "num_workers" in self.training_config:
             kwargs["num_workers"] = self.training_config["num_workers"]
         return kwargs
 
-    def get_engine(self, dataset: str = None, category: str = None, model=None, datamodule=None, stage: str = None, version_dir: Path = None, is_resume: bool = False):
-        # Anomalib의 ModelCheckpoint를 사용해야 _setup_anomalib_callbacks()에서 중복 추가 방지
+    def get_engine(self, dataset: str = None, category: str = None, model=None, datamodule=None, version_dir: Path = None, is_resume: bool = False):
+        """학습(fit) 전용 Engine 생성. predict는 Engine을 사용하지 않음."""
         from anomalib.callbacks.checkpoint import ModelCheckpoint
 
-        # WandB logger 설정 (predict 시에는 비활성화)
+        # WandB logger 설정
         logger_config = self.engine_config.get("logger", False)
         if logger_config == "wandb":
-            if stage == "predict" or not (dataset and category):
-                # predict 또는 dataset/category 없으면 wandb 비활성화
+            if not (dataset and category):
                 logger_config = False
             else:
                 from pytorch_lightning.loggers import WandbLogger
@@ -218,12 +183,11 @@ class Anomalibs:
                 import torch
                 gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
 
-                # batch_size 추출
                 batch_size = self.training_config.get("train_batch_size")
                 if batch_size is None and datamodule is not None:
                     batch_size = getattr(datamodule, "train_batch_size", None)
                 if batch_size is None:
-                    batch_size = 1 if self.model_name == "efficientad" else 32
+                    batch_size = 32
 
                 img_size = self.config.get("data", {}).get("image_size", (256, 256))
                 max_epochs = self.training_config.get("max_epochs") or 100
@@ -232,7 +196,6 @@ class Anomalibs:
                 train_data = getattr(datamodule, "train_data", None)
                 num_train_img = len(train_data) if train_data is not None else 0
 
-                # run_name 조합: {dataset}_{category} 또는 {dataset}_{category}_{custom}
                 wandb_config = self.config.get("wandb", {})
                 custom_name = wandb_config.get("run_name")
                 if custom_name:
@@ -240,10 +203,8 @@ class Anomalibs:
                 else:
                     run_name = f"{dataset}_{category}"
 
-                # Early Stopping 설정 추출
                 es_config = self.training_config.get("early_stopping", {})
 
-                # 모델별 하이퍼파라미터 (yaml null이면 Anomalib default 사용)
                 model_hparams = {}
                 raw_model_params = self.config["anomaly"].get(self.model_name, {})
                 if self.model_name == "patchcore":
@@ -272,28 +233,23 @@ class Anomalibs:
         enable_progress = self.engine_config.get("enable_progress_bar", False)
         callbacks = [] if enable_progress else [EpochProgressCallback()]
 
-        # --- Custom Callbacks for Checkpoint and Visualizer ---
-
-        # 1. ModelCheckpoint Callback - predict 시에는 불필요
-        if dataset and category and stage != "predict" and version_dir:
+        # ModelCheckpoint Callback
+        if dataset and category and version_dir:
             checkpoint_dir = version_dir
-            # version_dir는 fit()에서 이미 생성됨
 
             monitor_cfg = self.MODEL_METRICS.get(
                 self.model_name, {"monitor": "image_AUROC", "mode": "max"}
             )
 
-            # PatchCore/WinCLIP: monitor=None이면 매 epoch 저장 (1 epoch만 학습)
             if monitor_cfg["monitor"] is None:
                 model_checkpoint_callback = ModelCheckpoint(
                     dirpath=str(checkpoint_dir),
                     filename="model",
-                    save_top_k=-1,  # 모든 checkpoint 저장
+                    save_top_k=-1,
                     every_n_epochs=1,
                     auto_insert_metric_name=False,
                 )
             else:
-                # EfficientAd: metric 기반 best model 저장
                 model_checkpoint_callback = ModelCheckpoint(
                     dirpath=str(checkpoint_dir),
                     filename="model",
@@ -304,71 +260,11 @@ class Anomalibs:
                     auto_insert_metric_name=False,
                 )
             callbacks.append(model_checkpoint_callback)
-        # If dataset/category not available, default ModelCheckpoint might still be added by Anomalib.
-        # Or, if this is a predict-only scenario without training, no checkpoint is needed.
 
-        # Visualizer Callback (yaml에서 visualizer: true일 때만)
-        visualizer_enabled = self.model_params.get("visualizer", False)
-        if visualizer_enabled and stage == "predict" and dataset and category:
-            try:
-                # Anomalib 버전에 따라 import 경로가 다름
-                try:
-                    from anomalib.callbacks import ImageVisualizerCallback as VisualizerCallback
-                except ImportError:
-                    try:
-                        from anomalib.utils.callbacks import ImageVisualizerCallback as VisualizerCallback
-                    except ImportError:
-                        VisualizerCallback = None
-
-                if VisualizerCallback:
-                    image_save_path = (
-                        self.output_root
-                        / self.MODEL_DIR_MAP.get(self.model_name, self.model_name.capitalize())
-                        / dataset
-                        / category
-                        / "predictions"
-                    )
-                    image_save_path.mkdir(parents=True, exist_ok=True)
-                    callbacks.append(VisualizerCallback(image_save_path=str(image_save_path)))
-            except Exception as e:
-                logger.warning(f"Visualizer callback not available: {e}")
-
-        # 3. Early Stopping Callback (fit 시에만, 특정 모델만)
-        # PatchCore: memory-bank 기반, 1 epoch만 학습 → early stopping 불필요
-        # WinCLIP: zero-shot, 학습 없음 → early stopping 불필요
-        # EfficientAd: iterative 학습 → early stopping 유용
+        # Early stopping is intentionally disabled for patchcore in this script.
         early_stop_config = self.training_config.get("early_stopping", {})
-        models_need_early_stopping = ["efficientad"]  # early stopping이 유용한 모델 목록
-
-        if (
-            early_stop_config.get("enabled", False)
-            and stage != "predict"
-            and self.model_name in models_need_early_stopping
-        ):
-            # 모델별 메트릭 설정 사용 (checkpoint와 동일하게)
-            model_metric = self.MODEL_METRICS.get(
-                self.model_name, {"monitor": "image_AUROC", "mode": "max"}
-            )
-            es_monitor = model_metric["monitor"]
-            es_mode = model_metric["mode"]
-
-            early_stopping_callback = EarlyStopping(
-                monitor=es_monitor,
-                patience=early_stop_config.get("patience", 10),
-                mode=es_mode,
-                verbose=True,
-                check_on_train_epoch_end=True,  # validation이 아닌 train epoch 후 체크
-            )
-            callbacks.append(early_stopping_callback)
-
-            # Early Stopping 추적 콜백 추가 (wandb 로깅용)
-            callbacks.append(EarlyStoppingTracker(early_stop_config))
-            get_train_logger().info(
-                f"Early Stopping enabled: monitor={es_monitor}, "
-                f"patience={early_stop_config.get('patience')}, mode={es_mode}"
-            )
-        elif early_stop_config.get("enabled", False) and self.model_name not in models_need_early_stopping and stage != "predict":
-            get_train_logger().info(f"Early Stopping skipped: {self.model_name} doesn't need iterative training")
+        if early_stop_config.get("enabled", False):
+            get_train_logger().info("Early Stopping is ignored for patchcore.")
 
         kwargs = {
             "accelerator": self.engine_config.get("accelerator", "auto"),
@@ -382,21 +278,11 @@ class Anomalibs:
         if "max_epochs" in self.training_config:
             kwargs["max_epochs"] = self.training_config["max_epochs"]
 
-        # min_epochs 설정 (early stopping이 실제 적용되는 모델에만)
-        if (
-            early_stop_config.get("enabled", False)
-            and early_stop_config.get("min_epochs")
-            and self.model_name in models_need_early_stopping
-        ):
-            kwargs["min_epochs"] = early_stop_config["min_epochs"]
-
         return Engine(**kwargs)
 
     # Anomalib이 저장하는 실제 폴더명 매핑
     MODEL_DIR_MAP = {
         "patchcore": "Patchcore",
-        "winclip": "WinClip",
-        "efficientad": "EfficientAd",
     }
 
     def get_category_dir(self, dataset: str, category: str) -> Path:
@@ -453,9 +339,6 @@ class Anomalibs:
 
         model-v2.ckpt > model-v1.ckpt > model.ckpt 순으로 최신 선택
         """
-        if self.model_name == "winclip":
-            return None
-
         target_version = self.predict_config.get("version", None)
 
         if target_version is not None:
@@ -510,14 +393,7 @@ class Anomalibs:
         best_ckpt = max(model_ckpts, key=get_version)
         return best_ckpt
 
-    def requires_fit(self) -> bool:
-        return self.model_name != "winclip"
-
     def fit(self, dataset: str, category: str):
-        if not self.requires_fit():
-            get_train_logger().info(f"{self.model_name} - no training required (zero-shot)")
-            return self
-
         # --- Resume/Version 관리 ---
         resume_training = self.training_config.get("resume", False)
         ckpt_path_to_use = None
@@ -559,49 +435,25 @@ class Anomalibs:
         return self
 
     def predict(self, dataset: str, category: str, save_json: bool = None):
+        from anomalib.data.dataclasses import ImageBatch
+        from torch.nn.functional import interpolate
+
         model = self.get_model()
         dm_kwargs = self.get_datamodule_kwargs()
         dm_kwargs["include_mask"] = True  # predict 시 GT mask 포함
         datamodule = self.loader.get_datamodule(dataset, category, **dm_kwargs)
         ckpt_path = self.get_ckpt_path(dataset, category)
 
-        # .pt 파일 (커스텀 torch.save 모델) 처리
+        # 모델 로드
         if ckpt_path is not None and ckpt_path.suffix == ".pt":
-            predictions = self.predict_from_pt(model, datamodule, ckpt_path)
-        else:
-            engine = self.get_engine(dataset, category, model=model, datamodule=datamodule, stage="predict")
-
-            # WinCLIP requires class name for text embeddings
-            if self.model_name == "winclip":
-                model.setup(class_name=category)
-
-            predictions = engine.predict(
-                datamodule=datamodule,
-                model=model,
-                ckpt_path=ckpt_path,
-            )
-
-        # save json
-        if save_json is None:
-            save_json = self.output_config.get("save_json", False)
-        if save_json:
-            self.save_predictions_json(predictions, dataset, category)
-
-        return predictions
-
-    def predict_from_pt(self, model, datamodule, pt_path: Path):
-        """커스텀 torch.save() .pt 파일로부터 PatchCore predict 수행."""
-        from anomalib.data.dataclasses import ImageBatch
-        from torch.nn.functional import interpolate
-
-        get_inference_logger().info(f"Loading custom .pt model: {pt_path}")
-        pt_data = torch.load(pt_path, map_location=self.device, weights_only=False)
-
-        # PatchCore 모델에 memory bank 주입
-        memory_bank = pt_data["memory_bank"].to(self.device)
-        model.model.memory_bank = memory_bank
-        model.model.coreset_sampling_ratio = pt_data.get("coreset_ratio", 0.1)
-        model.model.num_neighbors = pt_data.get("n_neighbors", 9)
+            get_inference_logger().info(f"Loading custom .pt model: {ckpt_path}")
+            pt_data = torch.load(ckpt_path, map_location=self.device, weights_only=False)
+            model.model.memory_bank = pt_data["memory_bank"].to(self.device)
+            model.model.coreset_sampling_ratio = pt_data.get("coreset_ratio", 0.1)
+            model.model.num_neighbors = pt_data.get("n_neighbors", 9)
+        elif ckpt_path is not None:
+            get_inference_logger().info(f"Loading checkpoint: {ckpt_path}")
+            model = model.__class__.load_from_checkpoint(str(ckpt_path), weights_only=False)
 
         model.eval()
         model.to(self.device)
@@ -609,16 +461,44 @@ class Anomalibs:
         datamodule.setup(stage="predict")
         predict_loader = datamodule.predict_dataloader()
 
+        # Warmup (GPU/MPS 초기화 비용 제거)
+        warmup_batch = next(iter(predict_loader))
+        with torch.no_grad():
+            _ = model(warmup_batch.image.to(self.device))
+        if self.device.type == "cuda":
+            torch.cuda.synchronize()
+        elif self.device.type == "mps":
+            torch.mps.synchronize()
+
+        # 순수 inference (Engine 미사용, forward pass만 측정)
         all_predictions = []
+        inference_time = 0.0
+        n_images = 0
+
         with torch.no_grad():
             for batch in predict_loader:
                 images = batch.image.to(self.device)
+                bs = images.shape[0]
+
+                if self.device.type == "cuda":
+                    torch.cuda.synchronize()
+                elif self.device.type == "mps":
+                    torch.mps.synchronize()
+
+                t0 = time.perf_counter()
                 outputs = model(images)
+
+                if self.device.type == "cuda":
+                    torch.cuda.synchronize()
+                elif self.device.type == "mps":
+                    torch.mps.synchronize()
+
+                inference_time += time.perf_counter() - t0
+                n_images += bs
 
                 anomaly_map = getattr(outputs, "anomaly_map", None)
                 pred_score = getattr(outputs, "pred_score", None)
 
-                # anomaly_map 크기를 이미지 크기에 맞춤
                 if anomaly_map is not None and anomaly_map.shape[-2:] != images.shape[-2:]:
                     anomaly_map = interpolate(anomaly_map, size=images.shape[-2:], mode="bilinear", align_corners=False)
 
@@ -637,7 +517,92 @@ class Anomalibs:
                 )
                 all_predictions.append(result)
 
+        self.last_inference_time = inference_time
+        self.last_n_images = n_images
+
+        # Compute and print metrics
+        self._print_metrics(all_predictions, dataset, category)
+
+        # save json
+        if save_json is None:
+            save_json = self.output_config.get("save_json", False)
+        if save_json:
+            self.save_predictions_json(all_predictions, dataset, category)
+
         return all_predictions
+
+    def _print_metrics(self, predictions: list, dataset: str, category: str):
+        """Compute and print evaluation metrics."""
+        import numpy as np
+        from sklearn.metrics import roc_auc_score, f1_score, precision_score, recall_score
+        from src.eval.metrics import compute_pro
+
+        # Collect predictions
+        y_true = []
+        y_score = []
+        y_pred = []
+        gt_masks = []
+        anomaly_maps = []
+
+        for batch in predictions:
+            if batch.gt_label is not None and batch.pred_score is not None:
+                y_true.extend(batch.gt_label.numpy().tolist())
+                y_score.extend(batch.pred_score.numpy().tolist())
+                # pred_label: anomalib이 학습 시 최적화한 threshold 적용 결과
+                if batch.pred_label is not None:
+                    y_pred.extend(batch.pred_label.numpy().tolist())
+                else:
+                    y_pred.extend((batch.pred_score.numpy() > 0.5).astype(int).tolist())
+            if batch.gt_mask is not None and batch.anomaly_map is not None:
+                gt_masks.append(batch.gt_mask.numpy())
+                anomaly_maps.append(batch.anomaly_map.numpy())
+
+        if not y_true or len(set(y_true)) < 2:
+            print(f"  [SKIP] Not enough labels for metrics (got {len(set(y_true))} classes)")
+            return
+
+        y_true = np.array(y_true)
+        y_score = np.array(y_score)
+        y_pred = np.array(y_pred)
+
+        # Compute image-level metrics
+        auroc = roc_auc_score(y_true, y_score)
+        f1 = f1_score(y_true, y_pred, zero_division=0)
+        precision = precision_score(y_true, y_pred, zero_division=0)
+        recall = recall_score(y_true, y_pred, zero_division=0)
+
+        # Compute PRO (pixel-level)
+        pro = None
+        if gt_masks and anomaly_maps:
+            gt_masks_np = np.concatenate(gt_masks, axis=0)
+            anomaly_maps_np = np.concatenate(anomaly_maps, axis=0)
+            # Ensure 3D shape (N, H, W)
+            if gt_masks_np.ndim == 4:
+                gt_masks_np = gt_masks_np.squeeze(1)
+            if anomaly_maps_np.ndim == 4:
+                anomaly_maps_np = anomaly_maps_np.squeeze(1)
+            # Only compute PRO for anomaly samples (where gt_mask has defects)
+            has_defect = gt_masks_np.sum(axis=(1, 2)) > 0
+            if has_defect.sum() > 0:
+                pro = compute_pro(gt_masks_np[has_defect], anomaly_maps_np[has_defect], num_thresholds=50)
+
+        # Compute per-class accuracy
+        n_normal = sum(y_true == 0)
+        n_anomaly = sum(y_true == 1)
+        normal_correct = sum((y_true == 0) & (y_pred == 0))  # True Negatives
+        anomaly_correct = sum((y_true == 1) & (y_pred == 1))  # True Positives
+
+        # Print results
+        print(f"\n  === {dataset}/{category} Metrics ===")
+        print(f"  Samples: {len(y_true)} (Normal: {n_normal}, Anomaly: {n_anomaly})")
+        print(f"  Normal correct:  {normal_correct}/{n_normal} ({normal_correct/n_normal*100:.1f}%)" if n_normal > 0 else "  Normal correct:  N/A")
+        print(f"  Anomaly correct: {anomaly_correct}/{n_anomaly} ({anomaly_correct/n_anomaly*100:.1f}%)" if n_anomaly > 0 else "  Anomaly correct: N/A")
+        print(f"  Image AUROC: {auroc:.4f}")
+        print(f"  F1 Score:    {f1:.4f}")
+        print(f"  Precision:   {precision:.4f}")
+        print(f"  Recall:      {recall:.4f}")
+        if pro is not None:
+            print(f"  PRO:         {pro:.4f}")
 
     def get_mask_path(self, image_path: str, dataset: str) -> str | None:
         """이미지 경로에서 대응하는 마스크 경로 추론"""
@@ -789,20 +754,103 @@ class Anomalibs:
         get_train_logger().info(f"fit_all completed: {total} categories")
 
     def predict_all(self, save_json: bool = None):
+        import numpy as np
+        from sklearn.metrics import roc_auc_score
+        from src.eval.metrics import compute_pro
+
         categories = self.get_trained_categories()
         total = len(categories)
         get_inference_logger().info(f"predict_all: {total} trained categories")
 
         all_predictions = {}
+        summary_results = []
+
         for idx, (dataset, category) in enumerate(categories, 1):
             print(f"\n[{idx}/{total}] Predicting: {dataset}/{category}...")
-            start = time.time()
+            self.last_inference_time = 0.0
+            self.last_n_images = 0
             key = f"{dataset}/{category}"
-            all_predictions[key] = self.predict(dataset, category, save_json)
-            elapsed = time.time() - start
-            msg = f"[{idx}/{total}] {dataset}/{category} done ({elapsed:.1f}s)"
+            predictions = self.predict(dataset, category, save_json)
+            all_predictions[key] = predictions
+
+            # Collect metrics for summary
+            y_true, y_score = [], []
+            gt_masks, anomaly_maps = [], []
+            for batch in predictions:
+                if batch.gt_label is not None and batch.pred_score is not None:
+                    y_true.extend(batch.gt_label.numpy().tolist())
+                    y_score.extend(batch.pred_score.numpy().tolist())
+                if batch.gt_mask is not None and batch.anomaly_map is not None:
+                    gt_masks.append(batch.gt_mask.numpy())
+                    anomaly_maps.append(batch.anomaly_map.numpy())
+
+            if y_true and len(set(y_true)) >= 2:
+                auroc = roc_auc_score(np.array(y_true), np.array(y_score))
+                pro = None
+                if gt_masks and anomaly_maps:
+                    gt_masks_np = np.concatenate(gt_masks, axis=0)
+                    anomaly_maps_np = np.concatenate(anomaly_maps, axis=0)
+                    if gt_masks_np.ndim == 4:
+                        gt_masks_np = gt_masks_np.squeeze(1)
+                    if anomaly_maps_np.ndim == 4:
+                        anomaly_maps_np = anomaly_maps_np.squeeze(1)
+                    has_defect = gt_masks_np.sum(axis=(1, 2)) > 0
+                    if has_defect.sum() > 0:
+                        pro = compute_pro(gt_masks_np[has_defect], anomaly_maps_np[has_defect], num_thresholds=50)
+                summary_results.append({"dataset": dataset, "category": category, "auroc": auroc, "pro": pro, "n": len(y_true)})
+
+            infer_t = self.last_inference_time
+            n_img = self.last_n_images
+            ms_per_img = (infer_t / n_img * 1000) if n_img > 0 else 0
+            msg = f"[{idx}/{total}] {dataset}/{category} done (inference: {infer_t:.2f}s, {ms_per_img:.1f}ms/img)"
             print(f"✓ {msg}")
             get_inference_logger().info(msg)
 
+        # Print summary table
+        if summary_results:
+            print("\n" + "=" * 70)
+            print("EVALUATION SUMMARY")
+            print("=" * 70)
+            print(f"{'Dataset':<15} {'Category':<20} {'AUROC':>10} {'PRO':>10} {'Samples':>10}")
+            print("-" * 70)
+            for r in summary_results:
+                pro_str = f"{r['pro']:.4f}" if r['pro'] is not None else "N/A"
+                print(f"{r['dataset']:<15} {r['category']:<20} {r['auroc']:>10.4f} {pro_str:>10} {r['n']:>10}")
+            avg_auroc = np.mean([r['auroc'] for r in summary_results])
+            pro_values = [r['pro'] for r in summary_results if r['pro'] is not None]
+            avg_pro = np.mean(pro_values) if pro_values else None
+            avg_pro_str = f"{avg_pro:.4f}" if avg_pro is not None else "N/A"
+            total_samples = sum(r['n'] for r in summary_results)
+            print("-" * 70)
+            print(f"{'Average':<15} {'':<20} {avg_auroc:>10.4f} {avg_pro_str:>10} {total_samples:>10}")
+            print("=" * 70)
+
         get_inference_logger().info(f"predict_all completed: {total} categories")
         return all_predictions
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Anomalib Training/Prediction")
+    parser.add_argument("--config", type=str, default="configs/anomaly.yaml")
+    parser.add_argument("--mode", type=str, default="fit", choices=["fit", "predict"])
+    parser.add_argument("--dataset", type=str, default=None)
+    parser.add_argument("--category", type=str, default=None)
+    parser.add_argument("--save-json", action="store_true")
+    args = parser.parse_args()
+
+    runner = Anomalibs(config_path=args.config)
+
+    if args.mode == "fit":
+        if args.dataset and args.category:
+            runner.fit(args.dataset, args.category)
+        else:
+            runner.fit_all()
+    elif args.mode == "predict":
+        if args.dataset and args.category:
+            runner.predict(args.dataset, args.category, save_json=args.save_json)
+        else:
+            runner.predict_all(save_json=args.save_json)
+
+
+if __name__ == "__main__":
+    main()
