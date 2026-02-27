@@ -2,7 +2,7 @@
 # Change ad_model and llm, then run: python scripts/run_experiment.py
 
 ad_model: null          # patchcore | winclip | efficientad | null (no AD)
-llm: gemma3-12b-qat             # qwen | llava | gpt-4o | claude | gemini | internvl | ...
+llm: gemini-3-pro-preview           # qwen | llava | gpt-4o | claude | gemini | internvl | ...
 
 # Data paths (override with env vars or CLI args)
 data_root: /content/drive/Othercomputers/mynotebook/multimodal-anomaly-report-generation/dataset/MMAD

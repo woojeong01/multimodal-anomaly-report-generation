@@ -92,9 +92,25 @@ class Indexer:
         return vectorstore
 
     def get_or_create(self) -> Chroma:
-        """Load existing index if available, otherwise build a new one."""
+        """Load existing index if available, otherwise build a new one.
+
+        Note: fallback build uses json_path only. If the index was originally
+        built with extra documents (PDF, CFIA, etc.) via build_index_from(),
+        those documents will be lost on rebuild. Pre-build and persist the
+        vectorstore before running experiments.
+        """
         if self.persist_dir.exists() and any(self.persist_dir.iterdir()):
             return self.load_index()
+        if self.json_path is None:
+            raise FileNotFoundError(
+                f"Vectorstore not found at '{self.persist_dir}' and no json_path "
+                "provided to rebuild. Pre-build the index with build_index_from()."
+            )
+        logger.warning(
+            "Vectorstore not found at '%s'. Rebuilding from JSON only — "
+            "any PDF/CFIA documents will NOT be included.",
+            self.persist_dir,
+        )
         return self.build_index()
 
     def add_documents(self, docs: List[Document]) -> None:

@@ -1,0 +1,4514 @@
+[
+  {
+    "dataset": "GoodsAD",
+    "category": "cigarette_box",
+    "line": "line-1",
+    "ad_score": 0.4109,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9294,
+    "image_path": "GoodsAD/cigarette_box/test/good/104_002.jpg",
+    "heatmap_path": "outputs/heatmaps/cigarette_box/good/cigarette_box_0000_heat.png",
+    "mask_path": "outputs/masks/cigarette_box/good/cigarette_box_0000_mask.png",
+    "overlay_path": "outputs/overlay/cigarette_box/good/cigarette_box_0000_overlay.png",
+    "similar_image_path": "dataset/MMAD/cigarette_box/good/cigarette_box_0046.png",
+    "ad_start_time": "2026-02-18T14:13:38.108266+09:00",
+    "ad_inference_duration": 0.98,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "cigarette_box 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9294,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "cigarette_box 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-20T19:58:56.108266+09:00",
+    "llm_inference_duration": 5.654,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "cigarette_box",
+    "line": "line-2",
+    "ad_score": 0.0643,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.8695,
+    "image_path": "GoodsAD/cigarette_box/test/good/014_001.jpg",
+    "heatmap_path": "outputs/heatmaps/cigarette_box/good/cigarette_box_0001_heat.png",
+    "mask_path": "outputs/masks/cigarette_box/good/cigarette_box_0001_mask.png",
+    "overlay_path": "outputs/overlay/cigarette_box/good/cigarette_box_0001_overlay.png",
+    "similar_image_path": "dataset/MMAD/cigarette_box/good/cigarette_box_0048.png",
+    "ad_start_time": "2026-02-21T14:04:52.108266+09:00",
+    "ad_inference_duration": 2.025,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "cigarette_box 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.8695,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "cigarette_box 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-19T23:21:40.108266+09:00",
+    "llm_inference_duration": 10.927,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "cigarette_box",
+    "line": "line-2",
+    "ad_score": 0.0987,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9897,
+    "image_path": "GoodsAD/cigarette_box/test/good/003_001.jpg",
+    "heatmap_path": "outputs/heatmaps/cigarette_box/good/cigarette_box_0002_heat.png",
+    "mask_path": "outputs/masks/cigarette_box/good/cigarette_box_0002_mask.png",
+    "overlay_path": "outputs/overlay/cigarette_box/good/cigarette_box_0002_overlay.png",
+    "similar_image_path": "dataset/MMAD/cigarette_box/good/cigarette_box_0033.png",
+    "ad_start_time": "2026-02-20T18:19:03.108266+09:00",
+    "ad_inference_duration": 0.591,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "cigarette_box 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9897,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "cigarette_box 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-15T08:17:40.108266+09:00",
+    "llm_inference_duration": 10.542,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "cigarette_box",
+    "line": "line-1",
+    "ad_score": 0.9272,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-left",
+    "bbox": [
+      182,
+      46,
+      300,
+      261
+    ],
+    "center": [
+      241.0,
+      153.5
+    ],
+    "area_ratio": 0.1721,
+    "confidence": 0.8122,
+    "image_path": "GoodsAD/cigarette_box/test/opened/052_005.jpg",
+    "heatmap_path": "outputs/heatmaps/cigarette_box/scratch/cigarette_box_0003_heat.png",
+    "mask_path": "outputs/masks/cigarette_box/scratch/cigarette_box_0003_mask.png",
+    "overlay_path": "outputs/overlay/cigarette_box/scratch/cigarette_box_0003_overlay.png",
+    "similar_image_path": "dataset/MMAD/cigarette_box/good/cigarette_box_0030.png",
+    "ad_start_time": "2026-02-21T04:41:11.108266+09:00",
+    "ad_inference_duration": 1.105,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "low",
+      "location": "bottom-left",
+      "description": "cigarette_box 제품의 bottom-left 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 17.2%.",
+      "confidence": 0.8122,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "cigarette_box scratch 결함 감지. bottom-left 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-21T11:42:34.108266+09:00",
+    "llm_inference_duration": 10.538,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "cigarette_box",
+    "line": "line-3",
+    "ad_score": 0.9128,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center-right",
+    "bbox": [
+      58,
+      105,
+      300,
+      165
+    ],
+    "center": [
+      179.0,
+      135.0
+    ],
+    "area_ratio": 0.0985,
+    "confidence": 0.7496,
+    "image_path": "GoodsAD/cigarette_box/test/opened/017_006.jpg",
+    "heatmap_path": "outputs/heatmaps/cigarette_box/scratch/cigarette_box_0004_heat.png",
+    "mask_path": "outputs/masks/cigarette_box/scratch/cigarette_box_0004_mask.png",
+    "overlay_path": "outputs/overlay/cigarette_box/scratch/cigarette_box_0004_overlay.png",
+    "similar_image_path": "dataset/MMAD/cigarette_box/good/cigarette_box_0047.png",
+    "ad_start_time": "2026-02-17T23:17:18.108266+09:00",
+    "ad_inference_duration": 3.41,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "low",
+      "location": "center-right",
+      "description": "cigarette_box 제품의 center-right 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 9.8%.",
+      "confidence": 0.7496,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "cigarette_box scratch 결함 감지. center-right 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-16T22:36:25.108266+09:00",
+    "llm_inference_duration": 6.831,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "cigarette_box",
+    "line": "line-3",
+    "ad_score": 0.8631,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-right",
+    "bbox": [
+      125,
+      71,
+      283,
+      362
+    ],
+    "center": [
+      204.0,
+      216.5
+    ],
+    "area_ratio": 0.3118,
+    "confidence": 0.9541,
+    "image_path": "GoodsAD/cigarette_box/test/opened/015_006.jpg",
+    "heatmap_path": "outputs/heatmaps/cigarette_box/hole/cigarette_box_0005_heat.png",
+    "mask_path": "outputs/masks/cigarette_box/hole/cigarette_box_0005_mask.png",
+    "overlay_path": "outputs/overlay/cigarette_box/hole/cigarette_box_0005_overlay.png",
+    "similar_image_path": "dataset/MMAD/cigarette_box/good/cigarette_box_0039.png",
+    "ad_start_time": "2026-02-18T16:59:17.108266+09:00",
+    "ad_inference_duration": 1.864,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "medium",
+      "location": "top-right",
+      "description": "cigarette_box 제품의 top-right 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 31.2%.",
+      "confidence": 0.9541,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "cigarette_box hole 결함 감지. top-right 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-16T03:09:16.108266+09:00",
+    "llm_inference_duration": 11.256,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-1",
+    "ad_score": 0.9573,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      51,
+      154,
+      106,
+      310
+    ],
+    "center": [
+      78.5,
+      232.0
+    ],
+    "area_ratio": 0.0582,
+    "confidence": 0.887,
+    "image_path": "GoodsAD/drink_bottle/test/cap_half_open/025_008.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/scratch/drink_bottle_0006_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/scratch/drink_bottle_0006_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/scratch/drink_bottle_0006_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0009.png",
+    "ad_start_time": "2026-02-20T13:00:24.108266+09:00",
+    "ad_inference_duration": 3.33,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "top-center",
+      "description": "drink_bottle 제품의 top-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 5.8%.",
+      "confidence": 0.887,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle scratch 결함 감지. top-center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-16T18:40:03.108266+09:00",
+    "llm_inference_duration": 4.283,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-3",
+    "ad_score": 0.9143,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center-left",
+    "bbox": [
+      109,
+      132,
+      300,
+      318
+    ],
+    "center": [
+      204.5,
+      225.0
+    ],
+    "area_ratio": 0.2409,
+    "confidence": 0.7143,
+    "image_path": "GoodsAD/drink_bottle/test/cap_half_open/016_010.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/hole/drink_bottle_0007_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/hole/drink_bottle_0007_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/hole/drink_bottle_0007_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0034.png",
+    "ad_start_time": "2026-02-20T06:04:32.108266+09:00",
+    "ad_inference_duration": 0.687,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "center-left",
+      "description": "drink_bottle 제품의 center-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 24.1%.",
+      "confidence": 0.7143,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle hole 결함 감지. center-left 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-17T12:01:07.108266+09:00",
+    "llm_inference_duration": 2.172,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-1",
+    "ad_score": 0.6525,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-left",
+    "bbox": [
+      88,
+      47,
+      124,
+      236
+    ],
+    "center": [
+      106.0,
+      141.5
+    ],
+    "area_ratio": 0.0461,
+    "confidence": 0.5812,
+    "image_path": "GoodsAD/drink_bottle/test/cap_half_open/012_010.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/scratch/drink_bottle_0008_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/scratch/drink_bottle_0008_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/scratch/drink_bottle_0008_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0016.png",
+    "ad_start_time": "2026-02-18T03:40:59.108266+09:00",
+    "ad_inference_duration": 2.441,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "top-left",
+      "description": "drink_bottle 제품의 top-left 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 4.6%.",
+      "confidence": 0.5812,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle scratch 결함 감지. top-left 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-17T08:58:18.108266+09:00",
+    "llm_inference_duration": 7.162,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-2",
+    "ad_score": 0.9326,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center-left",
+    "bbox": [
+      54,
+      54,
+      294,
+      255
+    ],
+    "center": [
+      174.0,
+      154.5
+    ],
+    "area_ratio": 0.3271,
+    "confidence": 0.7364,
+    "image_path": "GoodsAD/drink_bottle/test/cap_open/087_022.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/hole/drink_bottle_0009_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/hole/drink_bottle_0009_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/hole/drink_bottle_0009_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0030.png",
+    "ad_start_time": "2026-02-15T10:20:57.108266+09:00",
+    "ad_inference_duration": 2.455,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "center-left",
+      "description": "drink_bottle 제품의 center-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 32.7%.",
+      "confidence": 0.7364,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle hole 결함 감지. center-left 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-15T23:14:13.108266+09:00",
+    "llm_inference_duration": 2.136,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-1",
+    "ad_score": 0.7171,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-right",
+    "bbox": [
+      144,
+      65,
+      272,
+      178
+    ],
+    "center": [
+      208.0,
+      121.5
+    ],
+    "area_ratio": 0.0981,
+    "confidence": 0.6726,
+    "image_path": "GoodsAD/drink_bottle/test/cap_open/010_022.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/hole/drink_bottle_0010_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/hole/drink_bottle_0010_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/hole/drink_bottle_0010_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0016.png",
+    "ad_start_time": "2026-02-15T16:31:41.108266+09:00",
+    "ad_inference_duration": 1.718,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "bottom-right",
+      "description": "drink_bottle 제품의 bottom-right 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 9.8%.",
+      "confidence": 0.6726,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle hole 결함 감지. bottom-right 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-21T10:51:52.108266+09:00",
+    "llm_inference_duration": 2.528,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-1",
+    "ad_score": 0.7082,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-center",
+    "bbox": [
+      153,
+      84,
+      275,
+      134
+    ],
+    "center": [
+      214.0,
+      109.0
+    ],
+    "area_ratio": 0.0414,
+    "confidence": 0.6224,
+    "image_path": "GoodsAD/drink_bottle/test/cap_open/094_021.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/scratch/drink_bottle_0011_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/scratch/drink_bottle_0011_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/scratch/drink_bottle_0011_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0001.png",
+    "ad_start_time": "2026-02-19T12:17:21.108266+09:00",
+    "ad_inference_duration": 1.149,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "bottom-center",
+      "description": "drink_bottle 제품의 bottom-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 4.1%.",
+      "confidence": 0.6224,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle scratch 결함 감지. bottom-center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-20T07:06:05.108266+09:00",
+    "llm_inference_duration": 4.495,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-3",
+    "ad_score": 0.2978,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9181,
+    "image_path": "GoodsAD/drink_bottle/test/good/056_009.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/good/drink_bottle_0012_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/good/drink_bottle_0012_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/good/drink_bottle_0012_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0013.png",
+    "ad_start_time": "2026-02-18T08:59:35.108266+09:00",
+    "ad_inference_duration": 0.997,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "drink_bottle 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9181,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-15T11:36:19.108266+09:00",
+    "llm_inference_duration": 7.581,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-1",
+    "ad_score": 0.3366,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.858,
+    "image_path": "GoodsAD/drink_bottle/test/good/004_052.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/good/drink_bottle_0013_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/good/drink_bottle_0013_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/good/drink_bottle_0013_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0038.png",
+    "ad_start_time": "2026-02-20T13:26:43.108266+09:00",
+    "ad_inference_duration": 1.909,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "drink_bottle 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.858,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-21T05:16:21.108266+09:00",
+    "llm_inference_duration": 3.153,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-1",
+    "ad_score": 0.3831,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.8596,
+    "image_path": "GoodsAD/drink_bottle/test/good/004_051.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/good/drink_bottle_0014_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/good/drink_bottle_0014_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/good/drink_bottle_0014_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0005.png",
+    "ad_start_time": "2026-02-17T15:04:44.108266+09:00",
+    "ad_inference_duration": 1.592,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "drink_bottle 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.8596,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-21T16:30:02.108266+09:00",
+    "llm_inference_duration": 4.085,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-1",
+    "ad_score": 0.7967,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-right",
+    "bbox": [
+      110,
+      96,
+      182,
+      287
+    ],
+    "center": [
+      146.0,
+      191.5
+    ],
+    "area_ratio": 0.0933,
+    "confidence": 0.8651,
+    "image_path": "GoodsAD/drink_bottle/test/surface_damage/016_032.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/scratch/drink_bottle_0015_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/scratch/drink_bottle_0015_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/scratch/drink_bottle_0015_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0016.png",
+    "ad_start_time": "2026-02-17T23:56:12.108266+09:00",
+    "ad_inference_duration": 1.567,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "low",
+      "location": "bottom-right",
+      "description": "drink_bottle 제품의 bottom-right 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 9.3%.",
+      "confidence": 0.8651,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle scratch 결함 감지. bottom-right 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-18T09:57:04.108266+09:00",
+    "llm_inference_duration": 6.301,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-3",
+    "ad_score": 0.9995,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      48,
+      167,
+      177,
+      316
+    ],
+    "center": [
+      112.5,
+      241.5
+    ],
+    "area_ratio": 0.1304,
+    "confidence": 0.6667,
+    "image_path": "GoodsAD/drink_bottle/test/surface_damage/031_014.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/scratch/drink_bottle_0016_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/scratch/drink_bottle_0016_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/scratch/drink_bottle_0016_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0023.png",
+    "ad_start_time": "2026-02-15T14:36:27.108266+09:00",
+    "ad_inference_duration": 3.114,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "medium",
+      "location": "top-center",
+      "description": "drink_bottle 제품의 top-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 13.0%.",
+      "confidence": 0.6667,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle scratch 결함 감지. top-center 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-19T06:12:12.108266+09:00",
+    "llm_inference_duration": 4.492,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_bottle",
+    "line": "line-3",
+    "ad_score": 0.8351,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-right",
+    "bbox": [
+      106,
+      56,
+      350,
+      144
+    ],
+    "center": [
+      228.0,
+      100.0
+    ],
+    "area_ratio": 0.1456,
+    "confidence": 0.6664,
+    "image_path": "GoodsAD/drink_bottle/test/surface_damage/035_011.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_bottle/hole/drink_bottle_0017_heat.png",
+    "mask_path": "outputs/masks/drink_bottle/hole/drink_bottle_0017_mask.png",
+    "overlay_path": "outputs/overlay/drink_bottle/hole/drink_bottle_0017_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_bottle/good/drink_bottle_0007.png",
+    "ad_start_time": "2026-02-21T11:42:32.108266+09:00",
+    "ad_inference_duration": 0.797,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "bottom-right",
+      "description": "drink_bottle 제품의 bottom-right 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 14.6%.",
+      "confidence": 0.6664,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "drink_bottle hole 결함 감지. bottom-right 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-18T04:38:17.108266+09:00",
+    "llm_inference_duration": 7.851,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-3",
+    "ad_score": 0.872,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center",
+    "bbox": [
+      159,
+      155,
+      243,
+      188
+    ],
+    "center": [
+      201.0,
+      171.5
+    ],
+    "area_ratio": 0.0188,
+    "confidence": 0.5906,
+    "image_path": "GoodsAD/drink_can/test/deformation/048_008.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/hole/drink_can_0018_heat.png",
+    "mask_path": "outputs/masks/drink_can/hole/drink_can_0018_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/hole/drink_can_0018_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0028.png",
+    "ad_start_time": "2026-02-18T03:09:35.108266+09:00",
+    "ad_inference_duration": 0.441,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "center",
+      "description": "drink_can 제품의 center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 1.9%.",
+      "confidence": 0.5906,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "drink_can hole 결함 감지. center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-18T19:43:34.108266+09:00",
+    "llm_inference_duration": 9.597,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-3",
+    "ad_score": 0.8046,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-left",
+    "bbox": [
+      173,
+      32,
+      221,
+      90
+    ],
+    "center": [
+      197.0,
+      61.0
+    ],
+    "area_ratio": 0.0189,
+    "confidence": 0.9658,
+    "image_path": "GoodsAD/drink_can/test/deformation/053_006.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/hole/drink_can_0019_heat.png",
+    "mask_path": "outputs/masks/drink_can/hole/drink_can_0019_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/hole/drink_can_0019_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0045.png",
+    "ad_start_time": "2026-02-16T13:59:09.108266+09:00",
+    "ad_inference_duration": 2.046,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "bottom-left",
+      "description": "drink_can 제품의 bottom-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 1.9%.",
+      "confidence": 0.9658,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_can hole 결함 감지. bottom-left 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-19T06:06:46.108266+09:00",
+    "llm_inference_duration": 7.616,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-1",
+    "ad_score": 0.7579,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-left",
+    "bbox": [
+      121,
+      83,
+      315,
+      230
+    ],
+    "center": [
+      218.0,
+      156.5
+    ],
+    "area_ratio": 0.1934,
+    "confidence": 0.8435,
+    "image_path": "GoodsAD/drink_can/test/deformation/004_008.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/hole/drink_can_0020_heat.png",
+    "mask_path": "outputs/masks/drink_can/hole/drink_can_0020_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/hole/drink_can_0020_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0023.png",
+    "ad_start_time": "2026-02-21T13:38:55.108266+09:00",
+    "ad_inference_duration": 3.129,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "top-left",
+      "description": "drink_can 제품의 top-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 19.3%.",
+      "confidence": 0.8435,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "drink_can hole 결함 감지. top-left 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-19T16:56:12.108266+09:00",
+    "llm_inference_duration": 11.725,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-1",
+    "ad_score": 0.3891,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9867,
+    "image_path": "GoodsAD/drink_can/test/good/073_002.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/good/drink_can_0021_heat.png",
+    "mask_path": "outputs/masks/drink_can/good/drink_can_0021_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/good/drink_can_0021_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0012.png",
+    "ad_start_time": "2026-02-19T18:39:37.108266+09:00",
+    "ad_inference_duration": 0.379,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "drink_can 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9867,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_can 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-18T19:19:36.108266+09:00",
+    "llm_inference_duration": 9.715,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-3",
+    "ad_score": 0.3888,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9635,
+    "image_path": "GoodsAD/drink_can/test/good/019_006.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/good/drink_can_0022_heat.png",
+    "mask_path": "outputs/masks/drink_can/good/drink_can_0022_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/good/drink_can_0022_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0018.png",
+    "ad_start_time": "2026-02-16T16:56:26.108266+09:00",
+    "ad_inference_duration": 2.82,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "drink_can 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9635,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_can 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-16T02:03:21.108266+09:00",
+    "llm_inference_duration": 5.517,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-2",
+    "ad_score": 0.1001,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9643,
+    "image_path": "GoodsAD/drink_can/test/good/071_001.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/good/drink_can_0023_heat.png",
+    "mask_path": "outputs/masks/drink_can/good/drink_can_0023_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/good/drink_can_0023_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0030.png",
+    "ad_start_time": "2026-02-19T00:24:58.108266+09:00",
+    "ad_inference_duration": 1.277,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "drink_can 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9643,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_can 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-17T12:51:46.108266+09:00",
+    "llm_inference_duration": 3.841,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-2",
+    "ad_score": 0.7475,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      101,
+      119,
+      285,
+      269
+    ],
+    "center": [
+      193.0,
+      194.0
+    ],
+    "area_ratio": 0.1872,
+    "confidence": 0.7259,
+    "image_path": "GoodsAD/drink_can/test/straw_missing/056_005.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/scratch/drink_can_0024_heat.png",
+    "mask_path": "outputs/masks/drink_can/scratch/drink_can_0024_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/scratch/drink_can_0024_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0035.png",
+    "ad_start_time": "2026-02-18T19:01:30.108266+09:00",
+    "ad_inference_duration": 3.306,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "medium",
+      "location": "top-center",
+      "description": "drink_can 제품의 top-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 18.7%.",
+      "confidence": 0.7259,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_can scratch 결함 감지. top-center 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-16T04:09:59.108266+09:00",
+    "llm_inference_duration": 10.709,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-2",
+    "ad_score": 0.6634,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-left",
+    "bbox": [
+      118,
+      110,
+      249,
+      285
+    ],
+    "center": [
+      183.5,
+      197.5
+    ],
+    "area_ratio": 0.1555,
+    "confidence": 0.9831,
+    "image_path": "GoodsAD/drink_can/test/straw_missing/048_005.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/scratch/drink_can_0025_heat.png",
+    "mask_path": "outputs/masks/drink_can/scratch/drink_can_0025_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/scratch/drink_can_0025_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0008.png",
+    "ad_start_time": "2026-02-19T10:46:01.108266+09:00",
+    "ad_inference_duration": 3.178,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "bottom-left",
+      "description": "drink_can 제품의 bottom-left 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 15.6%.",
+      "confidence": 0.9831,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "drink_can scratch 결함 감지. bottom-left 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-17T01:56:07.108266+09:00",
+    "llm_inference_duration": 4.175,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-3",
+    "ad_score": 0.974,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-right",
+    "bbox": [
+      80,
+      123,
+      320,
+      160
+    ],
+    "center": [
+      200.0,
+      141.5
+    ],
+    "area_ratio": 0.0602,
+    "confidence": 0.9675,
+    "image_path": "GoodsAD/drink_can/test/straw_missing/060_005.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/hole/drink_can_0026_heat.png",
+    "mask_path": "outputs/masks/drink_can/hole/drink_can_0026_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/hole/drink_can_0026_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0022.png",
+    "ad_start_time": "2026-02-18T14:00:19.108266+09:00",
+    "ad_inference_duration": 2.423,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "medium",
+      "location": "bottom-right",
+      "description": "drink_can 제품의 bottom-right 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 6.0%.",
+      "confidence": 0.9675,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_can hole 결함 감지. bottom-right 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-16T06:52:14.108266+09:00",
+    "llm_inference_duration": 9.057,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-2",
+    "ad_score": 0.7642,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center",
+    "bbox": [
+      171,
+      62,
+      240,
+      297
+    ],
+    "center": [
+      205.5,
+      179.5
+    ],
+    "area_ratio": 0.11,
+    "confidence": 0.8426,
+    "image_path": "GoodsAD/drink_can/test/surface_damage/019_010.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/hole/drink_can_0027_heat.png",
+    "mask_path": "outputs/masks/drink_can/hole/drink_can_0027_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/hole/drink_can_0027_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0025.png",
+    "ad_start_time": "2026-02-16T21:15:35.108266+09:00",
+    "ad_inference_duration": 2.27,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "center",
+      "description": "drink_can 제품의 center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 11.0%.",
+      "confidence": 0.8426,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "drink_can hole 결함 감지. center 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-18T10:13:43.108266+09:00",
+    "llm_inference_duration": 5.764,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-1",
+    "ad_score": 0.8005,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center-right",
+    "bbox": [
+      149,
+      143,
+      282,
+      335
+    ],
+    "center": [
+      215.5,
+      239.0
+    ],
+    "area_ratio": 0.1732,
+    "confidence": 0.644,
+    "image_path": "GoodsAD/drink_can/test/surface_damage/012_007.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/hole/drink_can_0028_heat.png",
+    "mask_path": "outputs/masks/drink_can/hole/drink_can_0028_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/hole/drink_can_0028_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0031.png",
+    "ad_start_time": "2026-02-16T19:59:49.108266+09:00",
+    "ad_inference_duration": 2.408,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "center-right",
+      "description": "drink_can 제품의 center-right 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 17.3%.",
+      "confidence": 0.644,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "drink_can hole 결함 감지. center-right 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-18T05:13:46.108266+09:00",
+    "llm_inference_duration": 6.912,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "drink_can",
+    "line": "line-1",
+    "ad_score": 0.8855,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center-left",
+    "bbox": [
+      80,
+      67,
+      112,
+      110
+    ],
+    "center": [
+      96.0,
+      88.5
+    ],
+    "area_ratio": 0.0093,
+    "confidence": 0.6577,
+    "image_path": "GoodsAD/drink_can/test/surface_damage/022_008.jpg",
+    "heatmap_path": "outputs/heatmaps/drink_can/hole/drink_can_0029_heat.png",
+    "mask_path": "outputs/masks/drink_can/hole/drink_can_0029_mask.png",
+    "overlay_path": "outputs/overlay/drink_can/hole/drink_can_0029_overlay.png",
+    "similar_image_path": "dataset/MMAD/drink_can/good/drink_can_0031.png",
+    "ad_start_time": "2026-02-15T15:47:00.108266+09:00",
+    "ad_inference_duration": 1.757,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "center-left",
+      "description": "drink_can 제품의 center-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 0.9%.",
+      "confidence": 0.6577,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "drink_can hole 결함 감지. center-left 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-21T18:14:49.108266+09:00",
+    "llm_inference_duration": 3.542,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-2",
+    "ad_score": 0.7354,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-left",
+    "bbox": [
+      57,
+      138,
+      189,
+      203
+    ],
+    "center": [
+      123.0,
+      170.5
+    ],
+    "area_ratio": 0.0582,
+    "confidence": 0.9038,
+    "image_path": "GoodsAD/food_bottle/test/deformation/001_028.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/hole/food_bottle_0030_heat.png",
+    "mask_path": "outputs/masks/food_bottle/hole/food_bottle_0030_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/hole/food_bottle_0030_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0045.png",
+    "ad_start_time": "2026-02-21T01:26:13.108266+09:00",
+    "ad_inference_duration": 1.787,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "top-left",
+      "description": "food_bottle 제품의 top-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 5.8%.",
+      "confidence": 0.9038,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_bottle hole 결함 감지. top-left 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-21T12:55:37.108266+09:00",
+    "llm_inference_duration": 4.117,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-2",
+    "ad_score": 0.8837,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-right",
+    "bbox": [
+      182,
+      111,
+      315,
+      287
+    ],
+    "center": [
+      248.5,
+      199.0
+    ],
+    "area_ratio": 0.1587,
+    "confidence": 0.9086,
+    "image_path": "GoodsAD/food_bottle/test/deformation/020_030.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/hole/food_bottle_0031_heat.png",
+    "mask_path": "outputs/masks/food_bottle/hole/food_bottle_0031_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/hole/food_bottle_0031_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0033.png",
+    "ad_start_time": "2026-02-19T22:52:05.108266+09:00",
+    "ad_inference_duration": 2.958,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "bottom-right",
+      "description": "food_bottle 제품의 bottom-right 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 15.9%.",
+      "confidence": 0.9086,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_bottle hole 결함 감지. bottom-right 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-21T10:09:00.108266+09:00",
+    "llm_inference_duration": 6.182,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-2",
+    "ad_score": 0.9131,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center",
+    "bbox": [
+      163,
+      154,
+      343,
+      235
+    ],
+    "center": [
+      253.0,
+      194.5
+    ],
+    "area_ratio": 0.0989,
+    "confidence": 0.6708,
+    "image_path": "GoodsAD/food_bottle/test/deformation/033_022.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/hole/food_bottle_0032_heat.png",
+    "mask_path": "outputs/masks/food_bottle/hole/food_bottle_0032_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/hole/food_bottle_0032_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0005.png",
+    "ad_start_time": "2026-02-18T05:47:42.108266+09:00",
+    "ad_inference_duration": 1.05,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "center",
+      "description": "food_bottle 제품의 center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 9.9%.",
+      "confidence": 0.6708,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "food_bottle hole 결함 감지. center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-18T20:23:36.108266+09:00",
+    "llm_inference_duration": 4.857,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-1",
+    "ad_score": 0.0679,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9036,
+    "image_path": "GoodsAD/food_bottle/test/good/017_024.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/good/food_bottle_0033_heat.png",
+    "mask_path": "outputs/masks/food_bottle/good/food_bottle_0033_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/good/food_bottle_0033_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0010.png",
+    "ad_start_time": "2026-02-17T08:53:20.108266+09:00",
+    "ad_inference_duration": 0.506,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "food_bottle 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9036,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_bottle 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-19T17:17:33.108266+09:00",
+    "llm_inference_duration": 4.974,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-2",
+    "ad_score": 0.028,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9666,
+    "image_path": "GoodsAD/food_bottle/test/good/014_021.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/good/food_bottle_0034_heat.png",
+    "mask_path": "outputs/masks/food_bottle/good/food_bottle_0034_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/good/food_bottle_0034_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0025.png",
+    "ad_start_time": "2026-02-15T00:15:35.108266+09:00",
+    "ad_inference_duration": 3.042,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "food_bottle 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9666,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_bottle 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-21T18:15:10.108266+09:00",
+    "llm_inference_duration": 5.494,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-2",
+    "ad_score": 0.1344,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9046,
+    "image_path": "GoodsAD/food_bottle/test/good/008_029.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/good/food_bottle_0035_heat.png",
+    "mask_path": "outputs/masks/food_bottle/good/food_bottle_0035_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/good/food_bottle_0035_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0027.png",
+    "ad_start_time": "2026-02-21T07:20:20.108266+09:00",
+    "ad_inference_duration": 2.692,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "food_bottle 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9046,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_bottle 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-21T09:38:36.108266+09:00",
+    "llm_inference_duration": 9.899,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-1",
+    "ad_score": 0.7455,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-center",
+    "bbox": [
+      37,
+      129,
+      229,
+      320
+    ],
+    "center": [
+      133.0,
+      224.5
+    ],
+    "area_ratio": 0.2487,
+    "confidence": 0.8488,
+    "image_path": "GoodsAD/food_bottle/test/opened/009_031.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/scratch/food_bottle_0036_heat.png",
+    "mask_path": "outputs/masks/food_bottle/scratch/food_bottle_0036_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/scratch/food_bottle_0036_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0026.png",
+    "ad_start_time": "2026-02-16T18:38:36.108266+09:00",
+    "ad_inference_duration": 2.99,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "bottom-center",
+      "description": "food_bottle 제품의 bottom-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 24.9%.",
+      "confidence": 0.8488,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "food_bottle scratch 결함 감지. bottom-center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-16T07:44:42.108266+09:00",
+    "llm_inference_duration": 11.798,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-3",
+    "ad_score": 0.8475,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-left",
+    "bbox": [
+      51,
+      139,
+      140,
+      277
+    ],
+    "center": [
+      95.5,
+      208.0
+    ],
+    "area_ratio": 0.0833,
+    "confidence": 0.63,
+    "image_path": "GoodsAD/food_bottle/test/opened/031_027.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/scratch/food_bottle_0037_heat.png",
+    "mask_path": "outputs/masks/food_bottle/scratch/food_bottle_0037_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/scratch/food_bottle_0037_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0017.png",
+    "ad_start_time": "2026-02-19T08:59:34.108266+09:00",
+    "ad_inference_duration": 1.348,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "medium",
+      "location": "top-left",
+      "description": "food_bottle 제품의 top-left 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 8.3%.",
+      "confidence": 0.63,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_bottle scratch 결함 감지. top-left 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-20T07:00:41.108266+09:00",
+    "llm_inference_duration": 4.932,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-2",
+    "ad_score": 0.9422,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-center",
+    "bbox": [
+      34,
+      168,
+      80,
+      277
+    ],
+    "center": [
+      57.0,
+      222.5
+    ],
+    "area_ratio": 0.034,
+    "confidence": 0.6487,
+    "image_path": "GoodsAD/food_bottle/test/opened/012_032.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/hole/food_bottle_0038_heat.png",
+    "mask_path": "outputs/masks/food_bottle/hole/food_bottle_0038_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/hole/food_bottle_0038_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0005.png",
+    "ad_start_time": "2026-02-15T06:17:48.108266+09:00",
+    "ad_inference_duration": 2.714,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "bottom-center",
+      "description": "food_bottle 제품의 bottom-center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 3.4%.",
+      "confidence": 0.6487,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_bottle hole 결함 감지. bottom-center 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-17T18:35:50.108266+09:00",
+    "llm_inference_duration": 3.593,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-1",
+    "ad_score": 0.8157,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      174,
+      85,
+      313,
+      236
+    ],
+    "center": [
+      243.5,
+      160.5
+    ],
+    "area_ratio": 0.1423,
+    "confidence": 0.8874,
+    "image_path": "GoodsAD/food_bottle/test/surface_damage/009_036.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/scratch/food_bottle_0039_heat.png",
+    "mask_path": "outputs/masks/food_bottle/scratch/food_bottle_0039_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/scratch/food_bottle_0039_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0011.png",
+    "ad_start_time": "2026-02-16T03:55:51.108266+09:00",
+    "ad_inference_duration": 2.789,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "low",
+      "location": "top-center",
+      "description": "food_bottle 제품의 top-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 14.2%.",
+      "confidence": 0.8874,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_bottle scratch 결함 감지. top-center 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-16T18:16:15.108266+09:00",
+    "llm_inference_duration": 11.63,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-3",
+    "ad_score": 0.8871,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-left",
+    "bbox": [
+      131,
+      80,
+      170,
+      224
+    ],
+    "center": [
+      150.5,
+      152.0
+    ],
+    "area_ratio": 0.0381,
+    "confidence": 0.5948,
+    "image_path": "GoodsAD/food_bottle/test/surface_damage/008_039.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/scratch/food_bottle_0040_heat.png",
+    "mask_path": "outputs/masks/food_bottle/scratch/food_bottle_0040_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/scratch/food_bottle_0040_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0050.png",
+    "ad_start_time": "2026-02-18T10:24:47.108266+09:00",
+    "ad_inference_duration": 3.021,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "bottom-left",
+      "description": "food_bottle 제품의 bottom-left 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 3.8%.",
+      "confidence": 0.5948,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "food_bottle scratch 결함 감지. bottom-left 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-16T05:49:50.108266+09:00",
+    "llm_inference_duration": 9.86,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_bottle",
+    "line": "line-3",
+    "ad_score": 0.7999,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center-right",
+    "bbox": [
+      47,
+      159,
+      241,
+      182
+    ],
+    "center": [
+      144.0,
+      170.5
+    ],
+    "area_ratio": 0.0303,
+    "confidence": 0.9238,
+    "image_path": "GoodsAD/food_bottle/test/surface_damage/030_011.jpg",
+    "heatmap_path": "outputs/heatmaps/food_bottle/scratch/food_bottle_0041_heat.png",
+    "mask_path": "outputs/masks/food_bottle/scratch/food_bottle_0041_mask.png",
+    "overlay_path": "outputs/overlay/food_bottle/scratch/food_bottle_0041_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_bottle/good/food_bottle_0032.png",
+    "ad_start_time": "2026-02-16T01:18:40.108266+09:00",
+    "ad_inference_duration": 1.687,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "medium",
+      "location": "center-right",
+      "description": "food_bottle 제품의 center-right 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 3.0%.",
+      "confidence": 0.9238,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_bottle scratch 결함 감지. center-right 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-19T04:03:56.108266+09:00",
+    "llm_inference_duration": 8.174,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-1",
+    "ad_score": 0.9068,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center",
+    "bbox": [
+      187,
+      167,
+      330,
+      306
+    ],
+    "center": [
+      258.5,
+      236.5
+    ],
+    "area_ratio": 0.1348,
+    "confidence": 0.7417,
+    "image_path": "GoodsAD/food_box/test/deformation/015_018.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/scratch/food_box_0042_heat.png",
+    "mask_path": "outputs/masks/food_box/scratch/food_box_0042_mask.png",
+    "overlay_path": "outputs/overlay/food_box/scratch/food_box_0042_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0047.png",
+    "ad_start_time": "2026-02-18T00:44:48.108266+09:00",
+    "ad_inference_duration": 1.331,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "low",
+      "location": "center",
+      "description": "food_box 제품의 center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 13.5%.",
+      "confidence": 0.7417,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_box scratch 결함 감지. center 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-17T18:04:35.108266+09:00",
+    "llm_inference_duration": 10.223,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-1",
+    "ad_score": 0.9127,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-left",
+    "bbox": [
+      116,
+      37,
+      262,
+      223
+    ],
+    "center": [
+      189.0,
+      130.0
+    ],
+    "area_ratio": 0.1842,
+    "confidence": 0.63,
+    "image_path": "GoodsAD/food_box/test/deformation/035_020.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/hole/food_box_0043_heat.png",
+    "mask_path": "outputs/masks/food_box/hole/food_box_0043_mask.png",
+    "overlay_path": "outputs/overlay/food_box/hole/food_box_0043_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0014.png",
+    "ad_start_time": "2026-02-19T01:55:15.108266+09:00",
+    "ad_inference_duration": 2.853,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "bottom-left",
+      "description": "food_box 제품의 bottom-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 18.4%.",
+      "confidence": 0.63,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "food_box hole 결함 감지. bottom-left 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-18T21:42:06.108266+09:00",
+    "llm_inference_duration": 4.436,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-1",
+    "ad_score": 0.8308,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center-left",
+    "bbox": [
+      51,
+      91,
+      279,
+      236
+    ],
+    "center": [
+      165.0,
+      163.5
+    ],
+    "area_ratio": 0.2242,
+    "confidence": 0.7943,
+    "image_path": "GoodsAD/food_box/test/deformation/035_019.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/hole/food_box_0044_heat.png",
+    "mask_path": "outputs/masks/food_box/hole/food_box_0044_mask.png",
+    "overlay_path": "outputs/overlay/food_box/hole/food_box_0044_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0016.png",
+    "ad_start_time": "2026-02-20T13:14:34.108266+09:00",
+    "ad_inference_duration": 2.367,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "center-left",
+      "description": "food_box 제품의 center-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 22.4%.",
+      "confidence": 0.7943,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_box hole 결함 감지. center-left 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-20T17:31:58.108266+09:00",
+    "llm_inference_duration": 6.206,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-2",
+    "ad_score": 0.0997,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9469,
+    "image_path": "GoodsAD/food_box/test/good/031_007.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/good/food_box_0045_heat.png",
+    "mask_path": "outputs/masks/food_box/good/food_box_0045_mask.png",
+    "overlay_path": "outputs/overlay/food_box/good/food_box_0045_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0020.png",
+    "ad_start_time": "2026-02-19T06:03:20.108266+09:00",
+    "ad_inference_duration": 1.814,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "food_box 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9469,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_box 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-21T05:12:46.108266+09:00",
+    "llm_inference_duration": 5.109,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-3",
+    "ad_score": 0.1489,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9484,
+    "image_path": "GoodsAD/food_box/test/good/009_009.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/good/food_box_0046_heat.png",
+    "mask_path": "outputs/masks/food_box/good/food_box_0046_mask.png",
+    "overlay_path": "outputs/overlay/food_box/good/food_box_0046_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0018.png",
+    "ad_start_time": "2026-02-18T11:52:52.108266+09:00",
+    "ad_inference_duration": 1.104,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "food_box 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9484,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_box 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-16T05:42:51.108266+09:00",
+    "llm_inference_duration": 9.073,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-1",
+    "ad_score": 0.3343,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9831,
+    "image_path": "GoodsAD/food_box/test/good/055_008.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/good/food_box_0047_heat.png",
+    "mask_path": "outputs/masks/food_box/good/food_box_0047_mask.png",
+    "overlay_path": "outputs/overlay/food_box/good/food_box_0047_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0045.png",
+    "ad_start_time": "2026-02-17T00:29:58.108266+09:00",
+    "ad_inference_duration": 0.913,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "food_box 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9831,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_box 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-20T15:36:14.108266+09:00",
+    "llm_inference_duration": 4.403,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-1",
+    "ad_score": 0.7537,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center-right",
+    "bbox": [
+      75,
+      107,
+      102,
+      308
+    ],
+    "center": [
+      88.5,
+      207.5
+    ],
+    "area_ratio": 0.0368,
+    "confidence": 0.785,
+    "image_path": "GoodsAD/food_box/test/opened/054_016.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/hole/food_box_0048_heat.png",
+    "mask_path": "outputs/masks/food_box/hole/food_box_0048_mask.png",
+    "overlay_path": "outputs/overlay/food_box/hole/food_box_0048_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0018.png",
+    "ad_start_time": "2026-02-15T07:49:41.108266+09:00",
+    "ad_inference_duration": 3.418,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "center-right",
+      "description": "food_box 제품의 center-right 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 3.7%.",
+      "confidence": 0.785,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_box hole 결함 감지. center-right 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-21T11:44:53.108266+09:00",
+    "llm_inference_duration": 4.567,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-1",
+    "ad_score": 0.8509,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-center",
+    "bbox": [
+      152,
+      142,
+      259,
+      209
+    ],
+    "center": [
+      205.5,
+      175.5
+    ],
+    "area_ratio": 0.0486,
+    "confidence": 0.9748,
+    "image_path": "GoodsAD/food_box/test/opened/010_008.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/hole/food_box_0049_heat.png",
+    "mask_path": "outputs/masks/food_box/hole/food_box_0049_mask.png",
+    "overlay_path": "outputs/overlay/food_box/hole/food_box_0049_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0017.png",
+    "ad_start_time": "2026-02-20T13:43:10.108266+09:00",
+    "ad_inference_duration": 0.665,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "bottom-center",
+      "description": "food_box 제품의 bottom-center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 4.9%.",
+      "confidence": 0.9748,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_box hole 결함 감지. bottom-center 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-15T13:36:12.108266+09:00",
+    "llm_inference_duration": 5.707,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-1",
+    "ad_score": 0.9339,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center",
+    "bbox": [
+      51,
+      93,
+      131,
+      255
+    ],
+    "center": [
+      91.0,
+      174.0
+    ],
+    "area_ratio": 0.0879,
+    "confidence": 0.8864,
+    "image_path": "GoodsAD/food_box/test/opened/040_011.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/scratch/food_box_0050_heat.png",
+    "mask_path": "outputs/masks/food_box/scratch/food_box_0050_mask.png",
+    "overlay_path": "outputs/overlay/food_box/scratch/food_box_0050_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0039.png",
+    "ad_start_time": "2026-02-17T12:18:25.108266+09:00",
+    "ad_inference_duration": 2.782,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "medium",
+      "location": "center",
+      "description": "food_box 제품의 center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 8.8%.",
+      "confidence": 0.8864,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_box scratch 결함 감지. center 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-19T09:21:50.108266+09:00",
+    "llm_inference_duration": 6.23,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-2",
+    "ad_score": 0.7569,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-left",
+    "bbox": [
+      186,
+      55,
+      259,
+      183
+    ],
+    "center": [
+      222.5,
+      119.0
+    ],
+    "area_ratio": 0.0634,
+    "confidence": 0.6664,
+    "image_path": "GoodsAD/food_box/test/surface_damage/011_013.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/hole/food_box_0051_heat.png",
+    "mask_path": "outputs/masks/food_box/hole/food_box_0051_mask.png",
+    "overlay_path": "outputs/overlay/food_box/hole/food_box_0051_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0006.png",
+    "ad_start_time": "2026-02-16T16:19:01.108266+09:00",
+    "ad_inference_duration": 1.068,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "top-left",
+      "description": "food_box 제품의 top-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 6.3%.",
+      "confidence": 0.6664,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_box hole 결함 감지. top-left 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-21T11:21:00.108266+09:00",
+    "llm_inference_duration": 2.288,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-3",
+    "ad_score": 0.8578,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center",
+    "bbox": [
+      38,
+      89,
+      205,
+      253
+    ],
+    "center": [
+      121.5,
+      171.0
+    ],
+    "area_ratio": 0.1857,
+    "confidence": 0.8593,
+    "image_path": "GoodsAD/food_box/test/surface_damage/063_014.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/hole/food_box_0052_heat.png",
+    "mask_path": "outputs/masks/food_box/hole/food_box_0052_mask.png",
+    "overlay_path": "outputs/overlay/food_box/hole/food_box_0052_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0030.png",
+    "ad_start_time": "2026-02-15T15:18:12.108266+09:00",
+    "ad_inference_duration": 2.5,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "center",
+      "description": "food_box 제품의 center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 18.6%.",
+      "confidence": 0.8593,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "food_box hole 결함 감지. center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-17T23:37:40.108266+09:00",
+    "llm_inference_duration": 9.772,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_box",
+    "line": "line-1",
+    "ad_score": 0.8406,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-right",
+    "bbox": [
+      98,
+      66,
+      136,
+      116
+    ],
+    "center": [
+      117.0,
+      91.0
+    ],
+    "area_ratio": 0.0129,
+    "confidence": 0.623,
+    "image_path": "GoodsAD/food_box/test/surface_damage/028_008.jpg",
+    "heatmap_path": "outputs/heatmaps/food_box/scratch/food_box_0053_heat.png",
+    "mask_path": "outputs/masks/food_box/scratch/food_box_0053_mask.png",
+    "overlay_path": "outputs/overlay/food_box/scratch/food_box_0053_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_box/good/food_box_0020.png",
+    "ad_start_time": "2026-02-21T16:21:51.108266+09:00",
+    "ad_inference_duration": 3.248,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "top-right",
+      "description": "food_box 제품의 top-right 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 1.3%.",
+      "confidence": 0.623,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "food_box scratch 결함 감지. top-right 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-20T02:29:00.108266+09:00",
+    "llm_inference_duration": 2.806,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_package",
+    "line": "line-2",
+    "ad_score": 0.9799,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-right",
+    "bbox": [
+      168,
+      156,
+      300,
+      196
+    ],
+    "center": [
+      234.0,
+      176.0
+    ],
+    "area_ratio": 0.0358,
+    "confidence": 0.8131,
+    "image_path": "GoodsAD/food_package/test/broken/089_010.jpg",
+    "heatmap_path": "outputs/heatmaps/food_package/hole/food_package_0054_heat.png",
+    "mask_path": "outputs/masks/food_package/hole/food_package_0054_mask.png",
+    "overlay_path": "outputs/overlay/food_package/hole/food_package_0054_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_package/good/food_package_0028.png",
+    "ad_start_time": "2026-02-18T16:27:13.108266+09:00",
+    "ad_inference_duration": 2.232,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "bottom-right",
+      "description": "food_package 제품의 bottom-right 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 3.6%.",
+      "confidence": 0.8131,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "food_package hole 결함 감지. bottom-right 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-15T02:06:16.108266+09:00",
+    "llm_inference_duration": 2.459,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_package",
+    "line": "line-2",
+    "ad_score": 0.8517,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-right",
+    "bbox": [
+      150,
+      162,
+      336,
+      295
+    ],
+    "center": [
+      243.0,
+      228.5
+    ],
+    "area_ratio": 0.1678,
+    "confidence": 0.9531,
+    "image_path": "GoodsAD/food_package/test/broken/088_005.jpg",
+    "heatmap_path": "outputs/heatmaps/food_package/scratch/food_package_0055_heat.png",
+    "mask_path": "outputs/masks/food_package/scratch/food_package_0055_mask.png",
+    "overlay_path": "outputs/overlay/food_package/scratch/food_package_0055_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_package/good/food_package_0012.png",
+    "ad_start_time": "2026-02-20T01:31:53.108266+09:00",
+    "ad_inference_duration": 2.331,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "medium",
+      "location": "top-right",
+      "description": "food_package 제품의 top-right 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 16.8%.",
+      "confidence": 0.9531,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_package scratch 결함 감지. top-right 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-20T17:47:46.108266+09:00",
+    "llm_inference_duration": 11.675,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_package",
+    "line": "line-2",
+    "ad_score": 0.7624,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      71,
+      114,
+      301,
+      311
+    ],
+    "center": [
+      186.0,
+      212.5
+    ],
+    "area_ratio": 0.3073,
+    "confidence": 0.768,
+    "image_path": "GoodsAD/food_package/test/broken/078_011.jpg",
+    "heatmap_path": "outputs/heatmaps/food_package/hole/food_package_0056_heat.png",
+    "mask_path": "outputs/masks/food_package/hole/food_package_0056_mask.png",
+    "overlay_path": "outputs/overlay/food_package/hole/food_package_0056_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_package/good/food_package_0043.png",
+    "ad_start_time": "2026-02-19T15:12:39.108266+09:00",
+    "ad_inference_duration": 2.903,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "top-center",
+      "description": "food_package 제품의 top-center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 30.7%.",
+      "confidence": 0.768,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_package hole 결함 감지. top-center 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-21T10:47:53.108266+09:00",
+    "llm_inference_duration": 1.885,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_package",
+    "line": "line-2",
+    "ad_score": 0.1455,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9858,
+    "image_path": "GoodsAD/food_package/test/good/050_007.jpg",
+    "heatmap_path": "outputs/heatmaps/food_package/good/food_package_0057_heat.png",
+    "mask_path": "outputs/masks/food_package/good/food_package_0057_mask.png",
+    "overlay_path": "outputs/overlay/food_package/good/food_package_0057_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_package/good/food_package_0026.png",
+    "ad_start_time": "2026-02-21T00:27:28.108266+09:00",
+    "ad_inference_duration": 2.94,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "food_package 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9858,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_package 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-14T18:54:21.108266+09:00",
+    "llm_inference_duration": 8.405,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_package",
+    "line": "line-2",
+    "ad_score": 0.186,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.8763,
+    "image_path": "GoodsAD/food_package/test/good/017_008.jpg",
+    "heatmap_path": "outputs/heatmaps/food_package/good/food_package_0058_heat.png",
+    "mask_path": "outputs/masks/food_package/good/food_package_0058_mask.png",
+    "overlay_path": "outputs/overlay/food_package/good/food_package_0058_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_package/good/food_package_0024.png",
+    "ad_start_time": "2026-02-20T19:46:02.108266+09:00",
+    "ad_inference_duration": 2.301,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "food_package 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.8763,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_package 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-15T09:36:13.108266+09:00",
+    "llm_inference_duration": 3.637,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_package",
+    "line": "line-1",
+    "ad_score": 0.4175,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9113,
+    "image_path": "GoodsAD/food_package/test/good/060_010.jpg",
+    "heatmap_path": "outputs/heatmaps/food_package/good/food_package_0059_heat.png",
+    "mask_path": "outputs/masks/food_package/good/food_package_0059_mask.png",
+    "overlay_path": "outputs/overlay/food_package/good/food_package_0059_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_package/good/food_package_0045.png",
+    "ad_start_time": "2026-02-20T15:45:12.108266+09:00",
+    "ad_inference_duration": 0.689,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "food_package 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9113,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_package 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-17T16:16:16.108266+09:00",
+    "llm_inference_duration": 8.953,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_package",
+    "line": "line-1",
+    "ad_score": 0.8433,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      87,
+      59,
+      343,
+      139
+    ],
+    "center": [
+      215.0,
+      99.0
+    ],
+    "area_ratio": 0.1389,
+    "confidence": 0.835,
+    "image_path": "GoodsAD/food_package/test/surface_anomaly/009_011.jpg",
+    "heatmap_path": "outputs/heatmaps/food_package/hole/food_package_0060_heat.png",
+    "mask_path": "outputs/masks/food_package/hole/food_package_0060_mask.png",
+    "overlay_path": "outputs/overlay/food_package/hole/food_package_0060_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_package/good/food_package_0010.png",
+    "ad_start_time": "2026-02-20T19:43:59.108266+09:00",
+    "ad_inference_duration": 3.284,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "medium",
+      "location": "top-center",
+      "description": "food_package 제품의 top-center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 13.9%.",
+      "confidence": 0.835,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "food_package hole 결함 감지. top-center 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-18T07:34:54.108266+09:00",
+    "llm_inference_duration": 6.843,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_package",
+    "line": "line-2",
+    "ad_score": 0.7353,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-right",
+    "bbox": [
+      67,
+      128,
+      184,
+      301
+    ],
+    "center": [
+      125.5,
+      214.5
+    ],
+    "area_ratio": 0.1373,
+    "confidence": 0.7736,
+    "image_path": "GoodsAD/food_package/test/surface_anomaly/006_011.jpg",
+    "heatmap_path": "outputs/heatmaps/food_package/hole/food_package_0061_heat.png",
+    "mask_path": "outputs/masks/food_package/hole/food_package_0061_mask.png",
+    "overlay_path": "outputs/overlay/food_package/hole/food_package_0061_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_package/good/food_package_0009.png",
+    "ad_start_time": "2026-02-15T14:54:16.108266+09:00",
+    "ad_inference_duration": 1.184,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "bottom-right",
+      "description": "food_package 제품의 bottom-right 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 13.7%.",
+      "confidence": 0.7736,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "food_package hole 결함 감지. bottom-right 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-19T19:25:53.108266+09:00",
+    "llm_inference_duration": 5.069,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "GoodsAD",
+    "category": "food_package",
+    "line": "line-2",
+    "ad_score": 0.9041,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-center",
+    "bbox": [
+      68,
+      144,
+      363,
+      287
+    ],
+    "center": [
+      215.5,
+      215.5
+    ],
+    "area_ratio": 0.2861,
+    "confidence": 0.7019,
+    "image_path": "GoodsAD/food_package/test/surface_anomaly/030_010.jpg",
+    "heatmap_path": "outputs/heatmaps/food_package/hole/food_package_0062_heat.png",
+    "mask_path": "outputs/masks/food_package/hole/food_package_0062_mask.png",
+    "overlay_path": "outputs/overlay/food_package/hole/food_package_0062_overlay.png",
+    "similar_image_path": "dataset/MMAD/food_package/good/food_package_0036.png",
+    "ad_start_time": "2026-02-21T08:51:22.108266+09:00",
+    "ad_inference_duration": 1.507,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "bottom-center",
+      "description": "food_package 제품의 bottom-center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 28.6%.",
+      "confidence": 0.7019,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "food_package hole 결함 감지. bottom-center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-18T16:17:43.108266+09:00",
+    "llm_inference_duration": 10.631,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "breakfast_box",
+    "line": "line-3",
+    "ad_score": 0.1723,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9698,
+    "image_path": "MVTec-LOCO/breakfast_box/test/good/098.png",
+    "heatmap_path": "outputs/heatmaps/breakfast_box/good/breakfast_box_0063_heat.png",
+    "mask_path": "outputs/masks/breakfast_box/good/breakfast_box_0063_mask.png",
+    "overlay_path": "outputs/overlay/breakfast_box/good/breakfast_box_0063_overlay.png",
+    "similar_image_path": "dataset/MMAD/breakfast_box/good/breakfast_box_0027.png",
+    "ad_start_time": "2026-02-15T07:17:02.108266+09:00",
+    "ad_inference_duration": 1.318,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "breakfast_box 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9698,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "breakfast_box 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-20T12:20:06.108266+09:00",
+    "llm_inference_duration": 8.905,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "breakfast_box",
+    "line": "line-2",
+    "ad_score": 0.4448,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9609,
+    "image_path": "MVTec-LOCO/breakfast_box/test/good/037.png",
+    "heatmap_path": "outputs/heatmaps/breakfast_box/good/breakfast_box_0064_heat.png",
+    "mask_path": "outputs/masks/breakfast_box/good/breakfast_box_0064_mask.png",
+    "overlay_path": "outputs/overlay/breakfast_box/good/breakfast_box_0064_overlay.png",
+    "similar_image_path": "dataset/MMAD/breakfast_box/good/breakfast_box_0042.png",
+    "ad_start_time": "2026-02-16T14:52:28.108266+09:00",
+    "ad_inference_duration": 1.885,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "breakfast_box 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9609,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "breakfast_box 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-15T05:21:12.108266+09:00",
+    "llm_inference_duration": 2.826,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "breakfast_box",
+    "line": "line-2",
+    "ad_score": 0.3914,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9724,
+    "image_path": "MVTec-LOCO/breakfast_box/test/good/010.png",
+    "heatmap_path": "outputs/heatmaps/breakfast_box/good/breakfast_box_0065_heat.png",
+    "mask_path": "outputs/masks/breakfast_box/good/breakfast_box_0065_mask.png",
+    "overlay_path": "outputs/overlay/breakfast_box/good/breakfast_box_0065_overlay.png",
+    "similar_image_path": "dataset/MMAD/breakfast_box/good/breakfast_box_0029.png",
+    "ad_start_time": "2026-02-15T23:36:50.108266+09:00",
+    "ad_inference_duration": 1.983,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "breakfast_box 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9724,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "breakfast_box 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-20T07:39:38.108266+09:00",
+    "llm_inference_duration": 1.661,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "breakfast_box",
+    "line": "line-3",
+    "ad_score": 0.9895,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      150,
+      97,
+      256,
+      276
+    ],
+    "center": [
+      203.0,
+      186.5
+    ],
+    "area_ratio": 0.1287,
+    "confidence": 0.8548,
+    "image_path": "MVTec-LOCO/breakfast_box/test/logical_anomalies/029.png",
+    "heatmap_path": "outputs/heatmaps/breakfast_box/scratch/breakfast_box_0066_heat.png",
+    "mask_path": "outputs/masks/breakfast_box/scratch/breakfast_box_0066_mask.png",
+    "overlay_path": "outputs/overlay/breakfast_box/scratch/breakfast_box_0066_overlay.png",
+    "similar_image_path": "dataset/MMAD/breakfast_box/good/breakfast_box_0042.png",
+    "ad_start_time": "2026-02-15T17:57:51.108266+09:00",
+    "ad_inference_duration": 3.026,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "medium",
+      "location": "top-center",
+      "description": "breakfast_box 제품의 top-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 12.9%.",
+      "confidence": 0.8548,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "breakfast_box scratch 결함 감지. top-center 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-21T05:59:58.108266+09:00",
+    "llm_inference_duration": 5.49,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "breakfast_box",
+    "line": "line-1",
+    "ad_score": 0.8661,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center-left",
+    "bbox": [
+      191,
+      103,
+      269,
+      314
+    ],
+    "center": [
+      230.0,
+      208.5
+    ],
+    "area_ratio": 0.1116,
+    "confidence": 0.5898,
+    "image_path": "MVTec-LOCO/breakfast_box/test/logical_anomalies/012.png",
+    "heatmap_path": "outputs/heatmaps/breakfast_box/hole/breakfast_box_0067_heat.png",
+    "mask_path": "outputs/masks/breakfast_box/hole/breakfast_box_0067_mask.png",
+    "overlay_path": "outputs/overlay/breakfast_box/hole/breakfast_box_0067_overlay.png",
+    "similar_image_path": "dataset/MMAD/breakfast_box/good/breakfast_box_0007.png",
+    "ad_start_time": "2026-02-15T23:50:44.108266+09:00",
+    "ad_inference_duration": 1.72,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "center-left",
+      "description": "breakfast_box 제품의 center-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 11.2%.",
+      "confidence": 0.5898,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "breakfast_box hole 결함 감지. center-left 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-18T09:47:47.108266+09:00",
+    "llm_inference_duration": 10.986,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "breakfast_box",
+    "line": "line-2",
+    "ad_score": 0.7755,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-left",
+    "bbox": [
+      67,
+      92,
+      358,
+      217
+    ],
+    "center": [
+      212.5,
+      154.5
+    ],
+    "area_ratio": 0.2467,
+    "confidence": 0.799,
+    "image_path": "MVTec-LOCO/breakfast_box/test/logical_anomalies/048.png",
+    "heatmap_path": "outputs/heatmaps/breakfast_box/hole/breakfast_box_0068_heat.png",
+    "mask_path": "outputs/masks/breakfast_box/hole/breakfast_box_0068_mask.png",
+    "overlay_path": "outputs/overlay/breakfast_box/hole/breakfast_box_0068_overlay.png",
+    "similar_image_path": "dataset/MMAD/breakfast_box/good/breakfast_box_0012.png",
+    "ad_start_time": "2026-02-16T20:04:55.108266+09:00",
+    "ad_inference_duration": 0.86,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "bottom-left",
+      "description": "breakfast_box 제품의 bottom-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 24.7%.",
+      "confidence": 0.799,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "breakfast_box hole 결함 감지. bottom-left 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-19T09:59:41.108266+09:00",
+    "llm_inference_duration": 8.007,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "breakfast_box",
+    "line": "line-1",
+    "ad_score": 0.7313,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center",
+    "bbox": [
+      147,
+      95,
+      337,
+      117
+    ],
+    "center": [
+      242.0,
+      106.0
+    ],
+    "area_ratio": 0.0283,
+    "confidence": 0.9455,
+    "image_path": "MVTec-LOCO/breakfast_box/test/structural_anomalies/035.png",
+    "heatmap_path": "outputs/heatmaps/breakfast_box/hole/breakfast_box_0069_heat.png",
+    "mask_path": "outputs/masks/breakfast_box/hole/breakfast_box_0069_mask.png",
+    "overlay_path": "outputs/overlay/breakfast_box/hole/breakfast_box_0069_overlay.png",
+    "similar_image_path": "dataset/MMAD/breakfast_box/good/breakfast_box_0030.png",
+    "ad_start_time": "2026-02-18T06:20:58.108266+09:00",
+    "ad_inference_duration": 2.468,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "medium",
+      "location": "center",
+      "description": "breakfast_box 제품의 center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 2.8%.",
+      "confidence": 0.9455,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "breakfast_box hole 결함 감지. center 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-16T16:35:04.108266+09:00",
+    "llm_inference_duration": 2.276,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "breakfast_box",
+    "line": "line-2",
+    "ad_score": 0.8916,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-center",
+    "bbox": [
+      107,
+      80,
+      225,
+      347
+    ],
+    "center": [
+      166.0,
+      213.5
+    ],
+    "area_ratio": 0.2137,
+    "confidence": 0.5969,
+    "image_path": "MVTec-LOCO/breakfast_box/test/structural_anomalies/058.png",
+    "heatmap_path": "outputs/heatmaps/breakfast_box/hole/breakfast_box_0070_heat.png",
+    "mask_path": "outputs/masks/breakfast_box/hole/breakfast_box_0070_mask.png",
+    "overlay_path": "outputs/overlay/breakfast_box/hole/breakfast_box_0070_overlay.png",
+    "similar_image_path": "dataset/MMAD/breakfast_box/good/breakfast_box_0025.png",
+    "ad_start_time": "2026-02-21T17:09:19.108266+09:00",
+    "ad_inference_duration": 1.449,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "medium",
+      "location": "bottom-center",
+      "description": "breakfast_box 제품의 bottom-center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 21.4%.",
+      "confidence": 0.5969,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "breakfast_box hole 결함 감지. bottom-center 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-18T08:44:59.108266+09:00",
+    "llm_inference_duration": 11.923,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "breakfast_box",
+    "line": "line-2",
+    "ad_score": 0.7461,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-left",
+    "bbox": [
+      185,
+      157,
+      278,
+      235
+    ],
+    "center": [
+      231.5,
+      196.0
+    ],
+    "area_ratio": 0.0492,
+    "confidence": 0.8171,
+    "image_path": "MVTec-LOCO/breakfast_box/test/structural_anomalies/081.png",
+    "heatmap_path": "outputs/heatmaps/breakfast_box/scratch/breakfast_box_0071_heat.png",
+    "mask_path": "outputs/masks/breakfast_box/scratch/breakfast_box_0071_mask.png",
+    "overlay_path": "outputs/overlay/breakfast_box/scratch/breakfast_box_0071_overlay.png",
+    "similar_image_path": "dataset/MMAD/breakfast_box/good/breakfast_box_0023.png",
+    "ad_start_time": "2026-02-17T10:21:37.108266+09:00",
+    "ad_inference_duration": 2.337,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "top-left",
+      "description": "breakfast_box 제품의 top-left 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 4.9%.",
+      "confidence": 0.8171,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "breakfast_box scratch 결함 감지. top-left 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-17T19:34:16.108266+09:00",
+    "llm_inference_duration": 8.617,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "juice_bottle",
+    "line": "line-3",
+    "ad_score": 0.3773,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.938,
+    "image_path": "MVTec-LOCO/juice_bottle/test/good/046.png",
+    "heatmap_path": "outputs/heatmaps/juice_bottle/good/juice_bottle_0072_heat.png",
+    "mask_path": "outputs/masks/juice_bottle/good/juice_bottle_0072_mask.png",
+    "overlay_path": "outputs/overlay/juice_bottle/good/juice_bottle_0072_overlay.png",
+    "similar_image_path": "dataset/MMAD/juice_bottle/good/juice_bottle_0041.png",
+    "ad_start_time": "2026-02-15T06:03:12.108266+09:00",
+    "ad_inference_duration": 1.289,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "juice_bottle 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.938,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "juice_bottle 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-20T02:58:11.108266+09:00",
+    "llm_inference_duration": 1.85,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "juice_bottle",
+    "line": "line-3",
+    "ad_score": 0.0591,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9773,
+    "image_path": "MVTec-LOCO/juice_bottle/test/good/020.png",
+    "heatmap_path": "outputs/heatmaps/juice_bottle/good/juice_bottle_0073_heat.png",
+    "mask_path": "outputs/masks/juice_bottle/good/juice_bottle_0073_mask.png",
+    "overlay_path": "outputs/overlay/juice_bottle/good/juice_bottle_0073_overlay.png",
+    "similar_image_path": "dataset/MMAD/juice_bottle/good/juice_bottle_0021.png",
+    "ad_start_time": "2026-02-19T19:35:41.108266+09:00",
+    "ad_inference_duration": 0.862,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "juice_bottle 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9773,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "juice_bottle 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-16T09:03:54.108266+09:00",
+    "llm_inference_duration": 9.758,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "juice_bottle",
+    "line": "line-3",
+    "ad_score": 0.2258,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.8882,
+    "image_path": "MVTec-LOCO/juice_bottle/test/good/047.png",
+    "heatmap_path": "outputs/heatmaps/juice_bottle/good/juice_bottle_0074_heat.png",
+    "mask_path": "outputs/masks/juice_bottle/good/juice_bottle_0074_mask.png",
+    "overlay_path": "outputs/overlay/juice_bottle/good/juice_bottle_0074_overlay.png",
+    "similar_image_path": "dataset/MMAD/juice_bottle/good/juice_bottle_0011.png",
+    "ad_start_time": "2026-02-17T21:25:07.108266+09:00",
+    "ad_inference_duration": 3.225,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "juice_bottle 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.8882,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "juice_bottle 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-20T14:55:09.108266+09:00",
+    "llm_inference_duration": 11.658,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "juice_bottle",
+    "line": "line-2",
+    "ad_score": 0.9315,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-center",
+    "bbox": [
+      49,
+      66,
+      184,
+      289
+    ],
+    "center": [
+      116.5,
+      177.5
+    ],
+    "area_ratio": 0.2042,
+    "confidence": 0.9756,
+    "image_path": "MVTec-LOCO/juice_bottle/test/logical_anomalies/090.png",
+    "heatmap_path": "outputs/heatmaps/juice_bottle/hole/juice_bottle_0075_heat.png",
+    "mask_path": "outputs/masks/juice_bottle/hole/juice_bottle_0075_mask.png",
+    "overlay_path": "outputs/overlay/juice_bottle/hole/juice_bottle_0075_overlay.png",
+    "similar_image_path": "dataset/MMAD/juice_bottle/good/juice_bottle_0036.png",
+    "ad_start_time": "2026-02-19T05:06:37.108266+09:00",
+    "ad_inference_duration": 0.589,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "bottom-center",
+      "description": "juice_bottle 제품의 bottom-center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 20.4%.",
+      "confidence": 0.9756,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "juice_bottle hole 결함 감지. bottom-center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-19T13:29:56.108266+09:00",
+    "llm_inference_duration": 1.646,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "juice_bottle",
+    "line": "line-2",
+    "ad_score": 0.8855,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center",
+    "bbox": [
+      179,
+      127,
+      362,
+      242
+    ],
+    "center": [
+      270.5,
+      184.5
+    ],
+    "area_ratio": 0.1427,
+    "confidence": 0.5977,
+    "image_path": "MVTec-LOCO/juice_bottle/test/logical_anomalies/053.png",
+    "heatmap_path": "outputs/heatmaps/juice_bottle/scratch/juice_bottle_0076_heat.png",
+    "mask_path": "outputs/masks/juice_bottle/scratch/juice_bottle_0076_mask.png",
+    "overlay_path": "outputs/overlay/juice_bottle/scratch/juice_bottle_0076_overlay.png",
+    "similar_image_path": "dataset/MMAD/juice_bottle/good/juice_bottle_0015.png",
+    "ad_start_time": "2026-02-20T11:53:54.108266+09:00",
+    "ad_inference_duration": 0.38,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "center",
+      "description": "juice_bottle 제품의 center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 14.3%.",
+      "confidence": 0.5977,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "juice_bottle scratch 결함 감지. center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-21T14:05:33.108266+09:00",
+    "llm_inference_duration": 4.944,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "juice_bottle",
+    "line": "line-1",
+    "ad_score": 0.8724,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-center",
+    "bbox": [
+      107,
+      134,
+      156,
+      189
+    ],
+    "center": [
+      131.5,
+      161.5
+    ],
+    "area_ratio": 0.0183,
+    "confidence": 0.57,
+    "image_path": "MVTec-LOCO/juice_bottle/test/logical_anomalies/068.png",
+    "heatmap_path": "outputs/heatmaps/juice_bottle/scratch/juice_bottle_0077_heat.png",
+    "mask_path": "outputs/masks/juice_bottle/scratch/juice_bottle_0077_mask.png",
+    "overlay_path": "outputs/overlay/juice_bottle/scratch/juice_bottle_0077_overlay.png",
+    "similar_image_path": "dataset/MMAD/juice_bottle/good/juice_bottle_0003.png",
+    "ad_start_time": "2026-02-18T11:13:24.108266+09:00",
+    "ad_inference_duration": 3.487,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "bottom-center",
+      "description": "juice_bottle 제품의 bottom-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 1.8%.",
+      "confidence": 0.57,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "juice_bottle scratch 결함 감지. bottom-center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-16T04:23:36.108266+09:00",
+    "llm_inference_duration": 2.521,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "juice_bottle",
+    "line": "line-2",
+    "ad_score": 0.7799,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-right",
+    "bbox": [
+      137,
+      180,
+      347,
+      239
+    ],
+    "center": [
+      242.0,
+      209.5
+    ],
+    "area_ratio": 0.084,
+    "confidence": 0.9396,
+    "image_path": "MVTec-LOCO/juice_bottle/test/structural_anomalies/089.png",
+    "heatmap_path": "outputs/heatmaps/juice_bottle/scratch/juice_bottle_0078_heat.png",
+    "mask_path": "outputs/masks/juice_bottle/scratch/juice_bottle_0078_mask.png",
+    "overlay_path": "outputs/overlay/juice_bottle/scratch/juice_bottle_0078_overlay.png",
+    "similar_image_path": "dataset/MMAD/juice_bottle/good/juice_bottle_0042.png",
+    "ad_start_time": "2026-02-15T23:24:46.108266+09:00",
+    "ad_inference_duration": 2.968,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "medium",
+      "location": "bottom-right",
+      "description": "juice_bottle 제품의 bottom-right 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 8.4%.",
+      "confidence": 0.9396,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "juice_bottle scratch 결함 감지. bottom-right 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-19T17:26:35.108266+09:00",
+    "llm_inference_duration": 11.36,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "juice_bottle",
+    "line": "line-2",
+    "ad_score": 0.726,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-center",
+    "bbox": [
+      90,
+      122,
+      135,
+      317
+    ],
+    "center": [
+      112.5,
+      219.5
+    ],
+    "area_ratio": 0.0595,
+    "confidence": 0.7116,
+    "image_path": "MVTec-LOCO/juice_bottle/test/structural_anomalies/087.png",
+    "heatmap_path": "outputs/heatmaps/juice_bottle/scratch/juice_bottle_0079_heat.png",
+    "mask_path": "outputs/masks/juice_bottle/scratch/juice_bottle_0079_mask.png",
+    "overlay_path": "outputs/overlay/juice_bottle/scratch/juice_bottle_0079_overlay.png",
+    "similar_image_path": "dataset/MMAD/juice_bottle/good/juice_bottle_0042.png",
+    "ad_start_time": "2026-02-19T03:02:31.108266+09:00",
+    "ad_inference_duration": 0.494,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "low",
+      "location": "bottom-center",
+      "description": "juice_bottle 제품의 bottom-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 5.9%.",
+      "confidence": 0.7116,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "juice_bottle scratch 결함 감지. bottom-center 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-18T02:55:37.108266+09:00",
+    "llm_inference_duration": 3.493,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "juice_bottle",
+    "line": "line-3",
+    "ad_score": 0.7242,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-left",
+    "bbox": [
+      42,
+      115,
+      186,
+      167
+    ],
+    "center": [
+      114.0,
+      141.0
+    ],
+    "area_ratio": 0.0508,
+    "confidence": 0.8963,
+    "image_path": "MVTec-LOCO/juice_bottle/test/structural_anomalies/082.png",
+    "heatmap_path": "outputs/heatmaps/juice_bottle/hole/juice_bottle_0080_heat.png",
+    "mask_path": "outputs/masks/juice_bottle/hole/juice_bottle_0080_mask.png",
+    "overlay_path": "outputs/overlay/juice_bottle/hole/juice_bottle_0080_overlay.png",
+    "similar_image_path": "dataset/MMAD/juice_bottle/good/juice_bottle_0014.png",
+    "ad_start_time": "2026-02-15T14:33:17.108266+09:00",
+    "ad_inference_duration": 2.955,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "top-left",
+      "description": "juice_bottle 제품의 top-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 5.1%.",
+      "confidence": 0.8963,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "juice_bottle hole 결함 감지. top-left 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-21T11:59:43.108266+09:00",
+    "llm_inference_duration": 3.675,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "pushpins",
+    "line": "line-2",
+    "ad_score": 0.3485,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9604,
+    "image_path": "MVTec-LOCO/pushpins/test/good/018.png",
+    "heatmap_path": "outputs/heatmaps/pushpins/good/pushpins_0081_heat.png",
+    "mask_path": "outputs/masks/pushpins/good/pushpins_0081_mask.png",
+    "overlay_path": "outputs/overlay/pushpins/good/pushpins_0081_overlay.png",
+    "similar_image_path": "dataset/MMAD/pushpins/good/pushpins_0039.png",
+    "ad_start_time": "2026-02-14T19:23:48.108266+09:00",
+    "ad_inference_duration": 1.187,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "pushpins 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9604,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "pushpins 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-16T12:42:51.108266+09:00",
+    "llm_inference_duration": 11.869,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "pushpins",
+    "line": "line-2",
+    "ad_score": 0.3593,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.8654,
+    "image_path": "MVTec-LOCO/pushpins/test/good/043.png",
+    "heatmap_path": "outputs/heatmaps/pushpins/good/pushpins_0082_heat.png",
+    "mask_path": "outputs/masks/pushpins/good/pushpins_0082_mask.png",
+    "overlay_path": "outputs/overlay/pushpins/good/pushpins_0082_overlay.png",
+    "similar_image_path": "dataset/MMAD/pushpins/good/pushpins_0002.png",
+    "ad_start_time": "2026-02-16T08:57:40.108266+09:00",
+    "ad_inference_duration": 0.348,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "pushpins 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.8654,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "pushpins 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-17T15:52:24.108266+09:00",
+    "llm_inference_duration": 7.683,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "pushpins",
+    "line": "line-1",
+    "ad_score": 0.1194,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.8677,
+    "image_path": "MVTec-LOCO/pushpins/test/good/136.png",
+    "heatmap_path": "outputs/heatmaps/pushpins/good/pushpins_0083_heat.png",
+    "mask_path": "outputs/masks/pushpins/good/pushpins_0083_mask.png",
+    "overlay_path": "outputs/overlay/pushpins/good/pushpins_0083_overlay.png",
+    "similar_image_path": "dataset/MMAD/pushpins/good/pushpins_0027.png",
+    "ad_start_time": "2026-02-21T03:48:15.108266+09:00",
+    "ad_inference_duration": 0.664,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "pushpins 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.8677,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "pushpins 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-15T13:05:00.108266+09:00",
+    "llm_inference_duration": 6.501,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "pushpins",
+    "line": "line-3",
+    "ad_score": 0.6882,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-right",
+    "bbox": [
+      86,
+      187,
+      128,
+      340
+    ],
+    "center": [
+      107.0,
+      263.5
+    ],
+    "area_ratio": 0.0436,
+    "confidence": 0.6827,
+    "image_path": "MVTec-LOCO/pushpins/test/logical_anomalies/031.png",
+    "heatmap_path": "outputs/heatmaps/pushpins/hole/pushpins_0084_heat.png",
+    "mask_path": "outputs/masks/pushpins/hole/pushpins_0084_mask.png",
+    "overlay_path": "outputs/overlay/pushpins/hole/pushpins_0084_overlay.png",
+    "similar_image_path": "dataset/MMAD/pushpins/good/pushpins_0042.png",
+    "ad_start_time": "2026-02-15T03:38:38.108266+09:00",
+    "ad_inference_duration": 0.495,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "medium",
+      "location": "bottom-right",
+      "description": "pushpins 제품의 bottom-right 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 4.4%.",
+      "confidence": 0.6827,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "pushpins hole 결함 감지. bottom-right 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-20T14:05:03.108266+09:00",
+    "llm_inference_duration": 10.397,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "pushpins",
+    "line": "line-3",
+    "ad_score": 0.9684,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      50,
+      112,
+      145,
+      148
+    ],
+    "center": [
+      97.5,
+      130.0
+    ],
+    "area_ratio": 0.0232,
+    "confidence": 0.6055,
+    "image_path": "MVTec-LOCO/pushpins/test/logical_anomalies/020.png",
+    "heatmap_path": "outputs/heatmaps/pushpins/scratch/pushpins_0085_heat.png",
+    "mask_path": "outputs/masks/pushpins/scratch/pushpins_0085_mask.png",
+    "overlay_path": "outputs/overlay/pushpins/scratch/pushpins_0085_overlay.png",
+    "similar_image_path": "dataset/MMAD/pushpins/good/pushpins_0040.png",
+    "ad_start_time": "2026-02-21T10:17:28.108266+09:00",
+    "ad_inference_duration": 2.579,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "top-center",
+      "description": "pushpins 제품의 top-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 2.3%.",
+      "confidence": 0.6055,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "pushpins scratch 결함 감지. top-center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-19T09:31:02.108266+09:00",
+    "llm_inference_duration": 11.944,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "pushpins",
+    "line": "line-3",
+    "ad_score": 0.8619,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      59,
+      171,
+      189,
+      301
+    ],
+    "center": [
+      124.0,
+      236.0
+    ],
+    "area_ratio": 0.1146,
+    "confidence": 0.7487,
+    "image_path": "MVTec-LOCO/pushpins/test/logical_anomalies/059.png",
+    "heatmap_path": "outputs/heatmaps/pushpins/hole/pushpins_0086_heat.png",
+    "mask_path": "outputs/masks/pushpins/hole/pushpins_0086_mask.png",
+    "overlay_path": "outputs/overlay/pushpins/hole/pushpins_0086_overlay.png",
+    "similar_image_path": "dataset/MMAD/pushpins/good/pushpins_0015.png",
+    "ad_start_time": "2026-02-19T19:06:09.108266+09:00",
+    "ad_inference_duration": 1.385,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "top-center",
+      "description": "pushpins 제품의 top-center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 11.5%.",
+      "confidence": 0.7487,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "pushpins hole 결함 감지. top-center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-20T06:39:43.108266+09:00",
+    "llm_inference_duration": 5.687,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "pushpins",
+    "line": "line-2",
+    "ad_score": 0.7594,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center",
+    "bbox": [
+      125,
+      69,
+      320,
+      331
+    ],
+    "center": [
+      222.5,
+      200.0
+    ],
+    "area_ratio": 0.3465,
+    "confidence": 0.5795,
+    "image_path": "MVTec-LOCO/pushpins/test/structural_anomalies/048.png",
+    "heatmap_path": "outputs/heatmaps/pushpins/scratch/pushpins_0087_heat.png",
+    "mask_path": "outputs/masks/pushpins/scratch/pushpins_0087_mask.png",
+    "overlay_path": "outputs/overlay/pushpins/scratch/pushpins_0087_overlay.png",
+    "similar_image_path": "dataset/MMAD/pushpins/good/pushpins_0006.png",
+    "ad_start_time": "2026-02-15T21:43:33.108266+09:00",
+    "ad_inference_duration": 1.682,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "center",
+      "description": "pushpins 제품의 center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 34.6%.",
+      "confidence": 0.5795,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "pushpins scratch 결함 감지. center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-19T07:06:43.108266+09:00",
+    "llm_inference_duration": 10.024,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "pushpins",
+    "line": "line-3",
+    "ad_score": 0.8466,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      135,
+      120,
+      325,
+      332
+    ],
+    "center": [
+      230.0,
+      226.0
+    ],
+    "area_ratio": 0.2732,
+    "confidence": 0.7361,
+    "image_path": "MVTec-LOCO/pushpins/test/structural_anomalies/034.png",
+    "heatmap_path": "outputs/heatmaps/pushpins/scratch/pushpins_0088_heat.png",
+    "mask_path": "outputs/masks/pushpins/scratch/pushpins_0088_mask.png",
+    "overlay_path": "outputs/overlay/pushpins/scratch/pushpins_0088_overlay.png",
+    "similar_image_path": "dataset/MMAD/pushpins/good/pushpins_0047.png",
+    "ad_start_time": "2026-02-15T09:33:20.108266+09:00",
+    "ad_inference_duration": 3.399,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "top-center",
+      "description": "pushpins 제품의 top-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 27.3%.",
+      "confidence": 0.7361,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "pushpins scratch 결함 감지. top-center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-18T13:34:41.108266+09:00",
+    "llm_inference_duration": 5.192,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "pushpins",
+    "line": "line-3",
+    "ad_score": 0.8188,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      119,
+      172,
+      233,
+      221
+    ],
+    "center": [
+      176.0,
+      196.5
+    ],
+    "area_ratio": 0.0379,
+    "confidence": 0.8855,
+    "image_path": "MVTec-LOCO/pushpins/test/structural_anomalies/071.png",
+    "heatmap_path": "outputs/heatmaps/pushpins/scratch/pushpins_0089_heat.png",
+    "mask_path": "outputs/masks/pushpins/scratch/pushpins_0089_mask.png",
+    "overlay_path": "outputs/overlay/pushpins/scratch/pushpins_0089_overlay.png",
+    "similar_image_path": "dataset/MMAD/pushpins/good/pushpins_0037.png",
+    "ad_start_time": "2026-02-17T12:26:39.108266+09:00",
+    "ad_inference_duration": 2.883,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "high",
+      "location": "top-center",
+      "description": "pushpins 제품의 top-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 3.8%.",
+      "confidence": 0.8855,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "pushpins scratch 결함 감지. top-center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-21T13:57:50.108266+09:00",
+    "llm_inference_duration": 11.733,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "screw_bag",
+    "line": "line-3",
+    "ad_score": 0.2892,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.8537,
+    "image_path": "MVTec-LOCO/screw_bag/test/good/028.png",
+    "heatmap_path": "outputs/heatmaps/screw_bag/good/screw_bag_0090_heat.png",
+    "mask_path": "outputs/masks/screw_bag/good/screw_bag_0090_mask.png",
+    "overlay_path": "outputs/overlay/screw_bag/good/screw_bag_0090_overlay.png",
+    "similar_image_path": "dataset/MMAD/screw_bag/good/screw_bag_0043.png",
+    "ad_start_time": "2026-02-18T00:28:14.108266+09:00",
+    "ad_inference_duration": 0.393,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "screw_bag 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.8537,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "screw_bag 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-18T02:09:59.108266+09:00",
+    "llm_inference_duration": 8.878,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "screw_bag",
+    "line": "line-2",
+    "ad_score": 0.158,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.8754,
+    "image_path": "MVTec-LOCO/screw_bag/test/good/087.png",
+    "heatmap_path": "outputs/heatmaps/screw_bag/good/screw_bag_0091_heat.png",
+    "mask_path": "outputs/masks/screw_bag/good/screw_bag_0091_mask.png",
+    "overlay_path": "outputs/overlay/screw_bag/good/screw_bag_0091_overlay.png",
+    "similar_image_path": "dataset/MMAD/screw_bag/good/screw_bag_0010.png",
+    "ad_start_time": "2026-02-21T15:31:25.108266+09:00",
+    "ad_inference_duration": 2.404,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "screw_bag 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.8754,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "screw_bag 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-15T14:50:20.108266+09:00",
+    "llm_inference_duration": 2.99,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "screw_bag",
+    "line": "line-1",
+    "ad_score": 0.0413,
+    "ad_decision": "normal",
+    "is_anomaly_AD": false,
+    "has_defect": false,
+    "region": null,
+    "bbox": null,
+    "center": null,
+    "area_ratio": 0.0,
+    "confidence": 0.9243,
+    "image_path": "MVTec-LOCO/screw_bag/test/good/041.png",
+    "heatmap_path": "outputs/heatmaps/screw_bag/good/screw_bag_0092_heat.png",
+    "mask_path": "outputs/masks/screw_bag/good/screw_bag_0092_mask.png",
+    "overlay_path": "outputs/overlay/screw_bag/good/screw_bag_0092_overlay.png",
+    "similar_image_path": "dataset/MMAD/screw_bag/good/screw_bag_0025.png",
+    "ad_start_time": "2026-02-19T20:51:21.108266+09:00",
+    "ad_inference_duration": 1.752,
+    "is_anomaly_LLM": false,
+    "llm_report": {
+      "anomaly_type": "none",
+      "severity": "none",
+      "location": "none",
+      "description": "screw_bag 제품이 정상 상태입니다. 결함이 감지되지 않았습니다.",
+      "confidence": 0.9243,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "screw_bag 정상 판정.",
+      "risk_level": "none"
+    },
+    "llm_start_time": "2026-02-16T16:25:10.108266+09:00",
+    "llm_inference_duration": 5.386,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "screw_bag",
+    "line": "line-3",
+    "ad_score": 0.6797,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-left",
+    "bbox": [
+      69,
+      70,
+      114,
+      131
+    ],
+    "center": [
+      91.5,
+      100.5
+    ],
+    "area_ratio": 0.0186,
+    "confidence": 0.6697,
+    "image_path": "MVTec-LOCO/screw_bag/test/logical_anomalies/014.png",
+    "heatmap_path": "outputs/heatmaps/screw_bag/hole/screw_bag_0093_heat.png",
+    "mask_path": "outputs/masks/screw_bag/hole/screw_bag_0093_mask.png",
+    "overlay_path": "outputs/overlay/screw_bag/hole/screw_bag_0093_overlay.png",
+    "similar_image_path": "dataset/MMAD/screw_bag/good/screw_bag_0043.png",
+    "ad_start_time": "2026-02-19T22:04:26.108266+09:00",
+    "ad_inference_duration": 1.854,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "top-left",
+      "description": "screw_bag 제품의 top-left 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 1.9%.",
+      "confidence": 0.6697,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "screw_bag hole 결함 감지. top-left 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-20T03:19:31.108266+09:00",
+    "llm_inference_duration": 5.849,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "screw_bag",
+    "line": "line-2",
+    "ad_score": 0.6888,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-center",
+    "bbox": [
+      164,
+      108,
+      195,
+      184
+    ],
+    "center": [
+      179.5,
+      146.0
+    ],
+    "area_ratio": 0.016,
+    "confidence": 0.7239,
+    "image_path": "MVTec-LOCO/screw_bag/test/logical_anomalies/058.png",
+    "heatmap_path": "outputs/heatmaps/screw_bag/scratch/screw_bag_0094_heat.png",
+    "mask_path": "outputs/masks/screw_bag/scratch/screw_bag_0094_mask.png",
+    "overlay_path": "outputs/overlay/screw_bag/scratch/screw_bag_0094_overlay.png",
+    "similar_image_path": "dataset/MMAD/screw_bag/good/screw_bag_0039.png",
+    "ad_start_time": "2026-02-15T10:31:38.108266+09:00",
+    "ad_inference_duration": 0.325,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "low",
+      "location": "bottom-center",
+      "description": "screw_bag 제품의 bottom-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 1.6%.",
+      "confidence": 0.7239,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "screw_bag scratch 결함 감지. bottom-center 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-18T10:21:56.108266+09:00",
+    "llm_inference_duration": 11.426,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "screw_bag",
+    "line": "line-2",
+    "ad_score": 0.692,
+    "ad_decision": "review_needed",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "bottom-center",
+    "bbox": [
+      140,
+      74,
+      193,
+      288
+    ],
+    "center": [
+      166.5,
+      181.0
+    ],
+    "area_ratio": 0.0769,
+    "confidence": 0.7843,
+    "image_path": "MVTec-LOCO/screw_bag/test/logical_anomalies/008.png",
+    "heatmap_path": "outputs/heatmaps/screw_bag/hole/screw_bag_0095_heat.png",
+    "mask_path": "outputs/masks/screw_bag/hole/screw_bag_0095_mask.png",
+    "overlay_path": "outputs/overlay/screw_bag/hole/screw_bag_0095_overlay.png",
+    "similar_image_path": "dataset/MMAD/screw_bag/good/screw_bag_0015.png",
+    "ad_start_time": "2026-02-20T20:16:58.108266+09:00",
+    "ad_inference_duration": 2.088,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "high",
+      "location": "bottom-center",
+      "description": "screw_bag 제품의 bottom-center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 7.7%.",
+      "confidence": 0.7843,
+      "recommendation": "출하 불가, 재검사 필요"
+    },
+    "llm_summary": {
+      "summary": "screw_bag hole 결함 감지. bottom-center 영역.",
+      "risk_level": "high"
+    },
+    "llm_start_time": "2026-02-19T01:43:46.108266+09:00",
+    "llm_inference_duration": 2.257,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "screw_bag",
+    "line": "line-1",
+    "ad_score": 0.8109,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      110,
+      177,
+      239,
+      343
+    ],
+    "center": [
+      174.5,
+      260.0
+    ],
+    "area_ratio": 0.1452,
+    "confidence": 0.7279,
+    "image_path": "MVTec-LOCO/screw_bag/test/structural_anomalies/040.png",
+    "heatmap_path": "outputs/heatmaps/screw_bag/scratch/screw_bag_0096_heat.png",
+    "mask_path": "outputs/masks/screw_bag/scratch/screw_bag_0096_mask.png",
+    "overlay_path": "outputs/overlay/screw_bag/scratch/screw_bag_0096_overlay.png",
+    "similar_image_path": "dataset/MMAD/screw_bag/good/screw_bag_0041.png",
+    "ad_start_time": "2026-02-19T20:13:58.108266+09:00",
+    "ad_inference_duration": 1.226,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "medium",
+      "location": "top-center",
+      "description": "screw_bag 제품의 top-center 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 14.5%.",
+      "confidence": 0.7279,
+      "recommendation": "주의 관찰 후 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "screw_bag scratch 결함 감지. top-center 영역.",
+      "risk_level": "medium"
+    },
+    "llm_start_time": "2026-02-19T16:32:42.108266+09:00",
+    "llm_inference_duration": 1.719,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "screw_bag",
+    "line": "line-2",
+    "ad_score": 0.9412,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "center-right",
+    "bbox": [
+      52,
+      141,
+      126,
+      223
+    ],
+    "center": [
+      89.0,
+      182.0
+    ],
+    "area_ratio": 0.0412,
+    "confidence": 0.7417,
+    "image_path": "MVTec-LOCO/screw_bag/test/structural_anomalies/051.png",
+    "heatmap_path": "outputs/heatmaps/screw_bag/scratch/screw_bag_0097_heat.png",
+    "mask_path": "outputs/masks/screw_bag/scratch/screw_bag_0097_mask.png",
+    "overlay_path": "outputs/overlay/screw_bag/scratch/screw_bag_0097_overlay.png",
+    "similar_image_path": "dataset/MMAD/screw_bag/good/screw_bag_0026.png",
+    "ad_start_time": "2026-02-21T03:11:09.108266+09:00",
+    "ad_inference_duration": 0.552,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "scratch",
+      "severity": "low",
+      "location": "center-right",
+      "description": "screw_bag 제품의 center-right 영역에서 scratch 유형의 결함이 감지되었습니다. 결함 면적 비율 4.1%.",
+      "confidence": 0.7417,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "screw_bag scratch 결함 감지. center-right 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-18T12:56:41.108266+09:00",
+    "llm_inference_duration": 9.331,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  },
+  {
+    "dataset": "MVTec-LOCO",
+    "category": "screw_bag",
+    "line": "line-1",
+    "ad_score": 0.8287,
+    "ad_decision": "anomaly",
+    "is_anomaly_AD": true,
+    "has_defect": true,
+    "region": "top-center",
+    "bbox": [
+      165,
+      160,
+      234,
+      269
+    ],
+    "center": [
+      199.5,
+      214.5
+    ],
+    "area_ratio": 0.051,
+    "confidence": 0.7045,
+    "image_path": "MVTec-LOCO/screw_bag/test/structural_anomalies/034.png",
+    "heatmap_path": "outputs/heatmaps/screw_bag/hole/screw_bag_0098_heat.png",
+    "mask_path": "outputs/masks/screw_bag/hole/screw_bag_0098_mask.png",
+    "overlay_path": "outputs/overlay/screw_bag/hole/screw_bag_0098_overlay.png",
+    "similar_image_path": "dataset/MMAD/screw_bag/good/screw_bag_0042.png",
+    "ad_start_time": "2026-02-16T13:35:19.108266+09:00",
+    "ad_inference_duration": 1.056,
+    "is_anomaly_LLM": true,
+    "llm_report": {
+      "anomaly_type": "hole",
+      "severity": "low",
+      "location": "top-center",
+      "description": "screw_bag 제품의 top-center 영역에서 hole 유형의 결함이 감지되었습니다. 결함 면적 비율 5.1%.",
+      "confidence": 0.7045,
+      "recommendation": "정상 출하 가능"
+    },
+    "llm_summary": {
+      "summary": "screw_bag hole 결함 감지. top-center 영역.",
+      "risk_level": "low"
+    },
+    "llm_start_time": "2026-02-16T13:13:32.108266+09:00",
+    "llm_inference_duration": 4.188,
+    "applied_policy": {
+      "t_low": 0.5,
+      "t_high": 0.8
+    }
+  }
+]

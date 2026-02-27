@@ -143,14 +143,13 @@ class Gemma3Client(BaseLLMClient):
 
         input_len = inputs["input_ids"].shape[-1]
 
-        with torch.no_grad():
+        with torch.inference_mode():
             generated_ids = self._model.generate(
                 **inputs,
                 max_new_tokens=self.max_new_tokens,
                 do_sample=False,
             )
 
-        # 입력 프롬프트 부분 제거
         trimmed = generated_ids[:, input_len:]
         response = self._processor.decode(trimmed[0], skip_special_tokens=True)
 
@@ -188,7 +187,10 @@ class Gemma3Client(BaseLLMClient):
                 predicted_answers.append('')
                 continue
 
-            parsed = self.parse_answer(self.extract_response_text(response))
+            response_text = self.extract_response_text(response)
+            conv = meta.get("conversation", [])
+            options = conv[i].get("Options", {}) if i < len(conv) else None
+            parsed = self.parse_answer(response_text, options)
             predicted_answers.append(parsed[-1] if parsed else '')
 
         return questions, answers, predicted_answers, question_types

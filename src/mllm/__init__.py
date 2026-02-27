@@ -18,6 +18,7 @@ __all__ = [
     "get_qwen_client",
     "get_internvl_client",
     "get_llava_client",
+    "get_gemma3_client",
 ]
 
 
@@ -56,3 +57,9 @@ def get_llava_client(*args, **kwargs):
     """Get LLaVA client (requires transformers or llava package)."""
     from .llava_client import LLaVAClient
     return LLaVAClient(*args, **kwargs)
+
+
+def get_gemma3_client(*args, **kwargs):
+    """Get Gemma3 client (requires transformers; quantization requires bitsandbytes + CUDA)."""
+    from .gemma3_client import Gemma3Client
+    return Gemma3Client(*args, **kwargs)

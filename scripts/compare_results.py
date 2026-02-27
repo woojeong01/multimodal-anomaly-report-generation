@@ -55,8 +55,8 @@ def print_table(results: list[dict], sort_by: str = "timestamp"):
         results.sort(key=lambda r: r.get("timestamp", ""))
 
     # Header
-    headers = ["Experiment", "LLM", "AD Model", "Few-shot", "Accuracy", "Images", "Errors", "Time", "Timestamp"]
-    widths = [25, 15, 15, 8, 8, 8, 6, 8, 20]
+    headers = ["Experiment", "LLM", "AD Model", "Few-shot", "Accuracy", "Images", "Errors", "Time", "s/img", "Timestamp"]
+    widths = [25, 15, 15, 8, 8, 8, 6, 8, 7, 20]
 
     header_line = ""
     for h, w in zip(headers, widths):
@@ -67,15 +67,19 @@ def print_table(results: list[dict], sort_by: str = "timestamp"):
 
     # Rows
     for r in results:
+        elapsed = r.get("elapsed_seconds", 0)
+        processed = r.get("processed") or 0
+        sec_per_img = elapsed / processed if processed > 0 else 0
         row = [
             r.get("experiment_name", "?")[:24],
             r.get("llm", "?")[:14],
             (r.get("ad_model") or "none")[:14],
             str(r.get("few_shot", "?")),
             f"{r.get('accuracy', 0):.1f}%",
-            str(r.get("processed", "?")),
+            str(processed),
             str(r.get("errors", 0)),
-            f"{r.get('elapsed_seconds', 0):.0f}s",
+            f"{elapsed:.0f}s",
+            f"{sec_per_img:.1f}s",
             r.get("timestamp", "?")[:19],
         ]
         line = ""
@@ -94,19 +98,35 @@ def print_table(results: list[dict], sort_by: str = "timestamp"):
 
 def main():
     parser = argparse.ArgumentParser(description="Compare experiment results")
-    parser.add_argument("--output-dir", type=str, default="outputs/eval",
-                        help="Directory containing .meta.json files")
+    parser.add_argument("--output-dir", type=str, nargs="+", default=["outputs/eval"],
+                        help="Directory(s) containing .meta.json files (space-separated)")
     parser.add_argument("--sort", type=str, default="timestamp",
                         choices=["timestamp", "accuracy", "name"],
                         help="Sort results by field")
     parser.add_argument("--filter-images", type=int, default=None,
                         help="Only show results with this many processed images")
+    parser.add_argument("--filter-llm", type=str, default=None,
+                        help="Only show results matching this LLM name (substring match)")
+    parser.add_argument("--max-sec-per-img", type=float, default=None,
+                        help="Only show results with s/img <= this value")
     args = parser.parse_args()
 
-    results = collect_results(args.output_dir)
+    results = []
+    for d in args.output_dir:
+        results.extend(collect_results(d))
 
     if args.filter_images is not None:
         results = [r for r in results if r.get("processed") == args.filter_images]
+
+    if args.filter_llm is not None:
+        results = [r for r in results if args.filter_llm in (r.get("llm") or "")]
+
+    if args.max_sec_per_img is not None:
+        def _sec_per_img(r):
+            elapsed = r.get("elapsed_seconds", 0)
+            processed = r.get("processed") or 0
+            return elapsed / processed if processed > 0 else float("inf")
+        results = [r for r in results if _sec_per_img(r) <= args.max_sec_per_img]
 
     print_table(results, sort_by=args.sort)
 

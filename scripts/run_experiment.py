@@ -28,11 +28,25 @@ import random
 import subprocess
 import sys
 import time
+import warnings
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-
 from tqdm import tqdm
+
+# Suppress noisy C++ library warnings (CUDA/XLA/absl) — must be set before any imports
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
+os.environ.setdefault("GLOG_minloglevel", "3")
+os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+
+# Load .env (HF_TOKEN, API keys 등)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+warnings.filterwarnings('ignore')
 
 # Path setup
 SCRIPT_PATH = Path(__file__).resolve()
@@ -45,6 +59,7 @@ from src.ad import load_ad_predictions_file, normalize_image_key, to_llm_ad_info
 from src.mllm.factory import MODEL_REGISTRY, get_llm_client, list_llm_models
 from src.mllm.base import format_ad_info
 from src.eval.metrics import calculate_accuracy_mmad
+from src.utils.log import setup_logger
 
 
 def stratified_sample(image_paths: list[str], n_per_folder: int, seed: int = 42) -> list[str]:
@@ -214,6 +229,8 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    logger = setup_logger(name="Experiment", log_prefix="experiment", console_logging=False)
+
     # Load dataset & sampling (AD inference 전에 먼저 수행)
     mmad_data = load_mmad_data(mmad_json)
     image_paths = list(mmad_data.keys())
@@ -269,6 +286,12 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
     print("=" * 60)
     print()
 
+    logger.info(
+        f"[Config] experiment={cfg.experiment_name} | llm={cfg.llm} | "
+        f"ad={cfg.ad_model or 'none'} | rag={cfg.rag} | "
+        f"few_shot={cfg.few_shot} | images={len(image_paths)}"
+    )
+
     # 샘플링된 이미지만으로 필터링된 MMAD json 생성 (AD inference용)
     sampled_mmad_json = mmad_json
     if len(image_paths) < total_available:
@@ -311,6 +334,7 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
     processed = 0
     errors = 0
     start_time = time.time()
+    class_latencies: dict = defaultdict(list)
 
     # Evaluate with progress bar
     pbar = tqdm(image_paths, desc="Evaluating", ncols=100)
@@ -350,14 +374,19 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
             ds_name = parts[0] if len(parts) > 0 else ""
             cat_name = parts[1] if len(parts) > 1 else ""
 
-            query = f"{cat_name} defect anomaly"
-            docs = rag_retriever.retrieve(query, dataset=ds_name, category=cat_name, k=3)
+            defect_type = parts[3] if len(parts) > 3 else ""
+            query = rag_retriever.build_query(cat_name, defect_type)
+            # anomaly: defect_type 필터로 해당 결함 문서만 검색
+            # good: defect_type 필터 없이 의미 검색 + source_type="json" 으로 PDF 노이즈 차단
+            dt_filter = defect_type if defect_type != "good" else None
+            docs = rag_retriever.retrieve(query, category=cat_name, defect_type=dt_filter, k=3)
             domain_knowledge = rag_retriever.format_context(docs)
 
             ad_info_str = format_ad_info(ad_info) if ad_info else ""
             instruction = rag_prompt(ad_info=ad_info_str, domain_knowledge=domain_knowledge)
 
         # Generate answers
+        img_start = time.time()
         if cfg.batch_mode:
             questions, answers, predicted, q_types = llm_client.generate_answers_batch(
                 query_image_path, meta, few_shot_paths, ad_info=ad_info, instruction=instruction
@@ -366,10 +395,16 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
             questions, answers, predicted, q_types = llm_client.generate_answers(
                 query_image_path, meta, few_shot_paths, ad_info=ad_info, instruction=instruction
             )
+        img_latency = time.time() - img_start
 
         if predicted is None or len(predicted) != len(answers):
             errors += 1
             continue
+
+        # Accumulate per-class latency (성공한 이미지만)
+        parts = image_rel.split("/")
+        cls_key = f"{parts[0]}/{parts[1]}" if len(parts) >= 2 else parts[0]
+        class_latencies[cls_key].append(img_latency)
 
         # Calculate accuracy for this image
         correct = sum(1 for p, a in zip(predicted, answers) if p == a)
@@ -399,6 +434,25 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
 
     elapsed = time.time() - start_time
     final_acc = total_correct / total_questions if total_questions > 0 else 0
+
+    # Print & log class-level latency table
+    if class_latencies:
+        print()
+        print("=" * 60)
+        print("Latency by Class")
+        print("=" * 60)
+        print(f"  {'Class':<32} {'N':>4}  {'Avg(s)':>7}  {'Total(s)':>9}")
+        print("-" * 60)
+        for cls_key in sorted(class_latencies.keys()):
+            lats = class_latencies[cls_key]
+            avg_lat = sum(lats) / len(lats)
+            total_lat = sum(lats)
+            print(f"  {cls_key:<32} {len(lats):>4}  {avg_lat:>7.2f}  {total_lat:>9.2f}")
+            logger.info(f"[Latency] {cls_key} | n={len(lats)} | avg={avg_lat:.3f}s | total={total_lat:.1f}s")
+        print("-" * 60)
+        overall_avg = elapsed / processed if processed > 0 else 0
+        print(f"  {'Overall':<32} {processed:>4}  {overall_avg:>7.2f}  {elapsed:>9.1f}")
+        print()
 
     # Save metadata
     meta_path = answers_json_path.with_suffix(".meta.json")
@@ -438,6 +492,13 @@ def run_experiment(cfg: ExperimentConfig) -> Path:
     print(f"Results saved to: {answers_json_path}")
     print(f"Metadata saved to: {meta_path}")
     print(f"Elapsed: {elapsed:.1f}s")
+
+    overall_avg = elapsed / processed if processed > 0 else 0
+    logger.info(
+        f"[Result] acc={round(final_acc * 100, 2)}% | "
+        f"questions={total_questions} | correct={total_correct} | "
+        f"elapsed={elapsed:.1f}s | avg={overall_avg:.3f}s/img"
+    )
 
     return answers_json_path
 
